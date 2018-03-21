@@ -285,7 +285,6 @@ protected:
           10 = major consensus splice site
           11 = minor consensus splice site
 
-
   FXColor matchColors[MISMATCH_CLRIDX+1]; //luminance ramp
   FXColor ctgQuals[NOCTG_CLRIDX+1]; //also a ramp, for contig
   */
@@ -295,7 +294,11 @@ protected:
   FXColor* ctgQuals;  //luminance ramp for contig colors
 protected:
   FXClView();
-  void calcLayout();
+  //virtual void layout();
+  void reposVScroll(int yscroll, double r0, int cy);
+  void reposHScroll(int xscroll, double c0, int cx);
+  bool vscroll;
+  bool hscroll;
 private:
   FXClView(const FXClView&);
   FXClView &operator=(const FXClView&);
@@ -304,7 +307,8 @@ public:
   enum {
     ID_TIPTIMER=FXScrollArea::ID_LAST,
     ID_LOOKUPTIMER,
-    ID_TREELIST,
+//    ID_TREELIST,
+    ID_REGIONCHANGE,
     ID_LAST
     };
   enum ColorStyle {
@@ -328,6 +332,8 @@ public:
                         ColorStyle colorstyle);
   void paintSeqBorder(FXDCWindow* dc, FXRectangle& clipR, ClSeq* seq,
                         ColorStyle colorstyle);
+  long onConfigure(FXObject*,FXSelector,void*);
+
   long onPaint(FXObject*,FXSelector,void*);
   long onLeftBtnPress(FXObject*,FXSelector,void*);
   long onLeftBtnRelease(FXObject*,FXSelector,void*);
@@ -378,6 +384,7 @@ public:
   ClSeq* addSeq(LytSeqInfo* seqinfo, const char* sequence=NULL);
   void addContig(const char* name, FXint len, const char* sequence=NULL, FXint offs=0);
   void buildLayout();
+  void getVisibleRegion(FXint& cstart, FXint& cend);
   FXClView(FXComposite *p,FXObject* tgt=NULL,FXSelector sel=0,FXuint opts=0,FXint x=0,FXint y=0,FXint w=0,FXint h=0);
   /// Destructor
   virtual ~FXClView();
@@ -387,7 +394,7 @@ public:
   virtual void load(FXStream& store);
   virtual void create();
   virtual void detach();
-  virtual void resize(FXint w,FXint h);
+  //virtual void resize(FXint w,FXint h);
   virtual void position(FXint x, FXint y, FXint w,FXint h);
   virtual void moveContents(FXint x,FXint y);
   //---------------
@@ -403,7 +410,13 @@ public:
 
   virtual FXint getContentWidth();
   virtual FXint getContentHeight();
+  virtual void layout();
+  /// Return visible scroll-area width
+  virtual FXint getVisibleWidth() const;
+  /// Return visible scroll-area height
+  virtual FXint getVisibleHeight() const;
 
+  void placeScrollBars(FXint vw, FXint vh);
   void RecalcContent(bool repaint=true);
   FXdouble getZoomX() { return scale.sx; }
   FXdouble getZoomY() { return scale.sy; }
@@ -422,7 +435,7 @@ public:
     selCol=-1;
     RecalcContent();
     }
-  int getXLeft() { return XLeft; }
+  //int getXLeft() { return XLeft; }
   bool HasSeqs() { return hasSeqs; }
   int getSelCol() { return selCol; }
   void set1pxZoom(int fromX=-1, int fromY=-1) {

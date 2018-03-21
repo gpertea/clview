@@ -73,7 +73,8 @@ public:
     ID_FILEOPEN,
     ID_RANDOM,
     ID_MAXIMIZE,
-    ID_CLOSEALL
+    ID_CLOSEALL,
+    ID_LAST
     };
  public:
   MainWindow(FXApp* a);

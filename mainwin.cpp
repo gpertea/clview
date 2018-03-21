@@ -14,7 +14,7 @@ FXDEFMAP(MainWindow) MainWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,  MainWindow::ID_RANDOM,           MainWindow::onRandomLayout),
   FXMAPFUNC(SEL_COMMAND,  MainWindow::ID_FILEFILTER,       MainWindow::onCmdFilter),
   FXMAPFUNC(SEL_COMMAND,  MainWindow::ID_FILEOPEN,         MainWindow::onCmdFileDlg),
-  FXMAPFUNC(SEL_SIGNAL,   MainWindow::ID_CLOSEALL,         MainWindow::onCmdCloseAll),
+  //FXMAPFUNC(SEL_SIGNAL,   MainWindow::ID_CLOSEALL,         MainWindow::onCmdCloseAll),
   FXMAPFUNC(SEL_COMMAND,  MainWindow::ID_CLOSEALL,         MainWindow::onCmdCloseAll),
   FXMAPFUNC(SEL_COMMAND,  MDIChild::ID_MAXRESTORE,         MainWindow::onMaxRestore),
   FXMAPFUNC(SEL_DOUBLECLICKED,  MainWindow::ID_TREELIST, MainWindow::onCmdTreeList),
@@ -68,10 +68,10 @@ void MainWindow::initColors() {
   static const char* grpsect="Group Colors";
 
   matchColors[16]=ini.readColorEntry(section, "Mismatch",
-          makeHiliteColor(makeHiliteColor(fxcolorfromname("Red"))));
+          makeHiliteColor(makeHiliteColor(colorFromName("Red"))));
   ini.writeColorEntry(section,"Mismatch",matchColors[16]);
   matchColors[15]=ini.readColorEntry(section, "MaxCoverage",
-               fxcolorfromname("darkBlue"));
+               colorFromName("darkBlue"));
   ini.writeColorEntry(section,"MaxCoverage",matchColors[15]);
   ctgQuals[16]=ini.readColorEntry(section, "ContigNoCoverage",
                                                  getApp()->getBaseColor());
@@ -97,32 +97,32 @@ void MainWindow::initColors() {
            */
   //-- base sequence color:
 
-  seqColors[0]=ini.readColorEntry(section,"SeqBg",fxcolorfromname("darkBlue"));
+  seqColors[0]=ini.readColorEntry(section,"SeqBg",colorFromName("darkBlue"));
   // Hex Colors are BGR style !
   //-- highlight border:
   seqColors[1]=ini.readColorEntry(section,"SeqBorderHilight",
-                                 makeHiliteColor(fxcolorfromname("Gray50")));
+                                 makeHiliteColor(colorFromName("Gray50")));
   //--shadow border:
   seqColors[2]=ini.readColorEntry(section,"SeqBorderShadow",
-                                 makeShadowColor(fxcolorfromname("Gray20")));
+                                 makeShadowColor(colorFromName("Gray20")));
   //nucleotide font color:
-  seqColors[3]=ini.readColorEntry(section,"SeqText",fxcolorfromname("White"));
+  seqColors[3]=ini.readColorEntry(section,"SeqText",colorFromName("White"));
   //-- clipping color:
   seqColors[4]=ini.readColorEntry(section,"SeqClipping",
-                       fxcolorfromname("MistyRose3")); //trimmed ends
+                       colorFromName("MistyRose3")); //trimmed ends
   //seq range color:
-  seqColors[5]=ini.readColorEntry(section,"SeqRange",fxcolorfromname("Green"));
+  seqColors[5]=ini.readColorEntry(section,"SeqRange",colorFromName("Green"));
   //seq select color:
-  seqColors[6]=ini.readColorEntry(section,"SeqSelect", fxcolorfromname("Yellow"));
+  seqColors[6]=ini.readColorEntry(section,"SeqSelect", colorFromName("Yellow"));
   //-- NP/ET color:
-  seqColors[7]=ini.readColorEntry(section,"SeqSpecial", fxcolorfromname("darkRed"));
+  seqColors[7]=ini.readColorEntry(section,"SeqSpecial", colorFromName("darkRed"));
   //-- inter-segment gap line:
-  seqColors[8]=ini.readColorEntry(section, "Intron", fxcolorfromname("LightSkyBlue3"));
+  seqColors[8]=ini.readColorEntry(section, "Intron", colorFromName("LightSkyBlue3"));
   //-- internal clipping color:
-  seqColors[9]=ini.readColorEntry(section, "InternalClipping", fxcolorfromname("MistyRose1"));
+  seqColors[9]=ini.readColorEntry(section, "InternalClipping", colorFromName("MistyRose1"));
   //-- splice site consensus
-  seqColors[10]=ini.readColorEntry(section, "MajorSplice", fxcolorfromname("Red")); //hard
-  seqColors[11]=ini.readColorEntry(section, "MinorSplice", fxcolorfromname("DarkPink")); //soft
+  seqColors[10]=ini.readColorEntry(section, "MajorSplice", colorFromName("Red")); //hard
+  seqColors[11]=ini.readColorEntry(section, "MinorSplice", colorFromName("DarkPink")); //soft
   ini.writeColorEntry(section, "SeqBg",seqColors[0]);
   ini.writeColorEntry(section, "SeqBorderHilight",seqColors[1]);
   ini.writeColorEntry(section, "SeqBorderShadow",seqColors[2]);
@@ -155,12 +155,12 @@ void MainWindow::initColors() {
     matchColors[14-i]=modhls(matchColors[15], 0, 10*i, -5*i);
     ctgQuals[14-i]=modhls(ctgQuals[15], 0, -4*i, 0);
     }
-  baseColors[0]=ini.readColorEntry(bsection, "BaseText", fxcolorfromname("White")); //font color
-  baseColors[1]=ini.readColorEntry(bsection, "BaseA", fxcolorfromname("DarkGreen"));  //A
-  baseColors[2]=ini.readColorEntry(bsection, "BaseC", fxcolorfromname("Blue"));   //C
-  baseColors[3]=ini.readColorEntry(bsection, "BaseG", fxcolorfromname("Orange")); //G
-  baseColors[4]=ini.readColorEntry(bsection, "BaseT", fxcolorfromname("Red"));    //T
-  baseColors[5]=ini.readColorEntry(bsection, "BaseX", fxcolorfromname("Gray20"));  // N,*, other codes
+  baseColors[0]=ini.readColorEntry(bsection, "BaseText", colorFromName("White")); //font color
+  baseColors[1]=ini.readColorEntry(bsection, "BaseA", colorFromName("DarkGreen"));  //A
+  baseColors[2]=ini.readColorEntry(bsection, "BaseC", colorFromName("Blue"));   //C
+  baseColors[3]=ini.readColorEntry(bsection, "BaseG", colorFromName("Orange")); //G
+  baseColors[4]=ini.readColorEntry(bsection, "BaseT", colorFromName("Red"));    //T
+  baseColors[5]=ini.readColorEntry(bsection, "BaseX", colorFromName("Gray20"));  // N,*, other codes
   ini.writeColorEntry(bsection, "BaseText",baseColors[0]);
   ini.writeColorEntry(bsection, "BaseA",baseColors[1]);
   ini.writeColorEntry(bsection, "BaseC",baseColors[2]);
@@ -358,6 +358,7 @@ FXString MainWindow::getPatterns() const {
 // Open existing file
 long MainWindow::onCmdFileDlg(FXObject*,FXSelector,void*){
   FXFileDialog opendialog(this,"Open file");
+  opendialog.setDirectory(FXSystem::getCurrentDirectory());
   opendialog.setSelectMode(SELECTFILE_EXISTING);
   opendialog.setPatternList(fltfiles);
   opendialog.setCurrentPattern(getCurrentPattern());
@@ -393,7 +394,7 @@ long MainWindow::onCmdTreeList(FXObject*,FXSelector,void* ptr){
 void MainWindow::newMDIChild(const char* openfile) {
   if (openfile!=NULL) {
    FXString s;
-   s.format(" Parsing file %s, please wait... ", openfile);
+   s.format(" Parsing file %s, please wait... \n", openfile);
    splash(s.text());
    s=openfile;
    //s.format("Cluster viewer: %s", fileNameOnly(s).text());

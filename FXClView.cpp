@@ -9,6 +9,7 @@
 // Map
 FXDEFMAP(FXClView) FXClViewMap[]={
   FXMAPFUNC(SEL_PAINT,0,FXClView::onPaint),
+  //FXMAPFUNC(SEL_CONFIGURE,0,FXClView::onConfigure),
   FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,FXClView::onLeftBtnPress),
   FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,FXClView::onLeftBtnRelease),
   FXMAPFUNC(SEL_CLICKED,0,FXClView::onClicked),
@@ -16,7 +17,7 @@ FXDEFMAP(FXClView) FXClViewMap[]={
   FXMAPFUNC(SEL_COMMAND,0,FXClView::onCommand),
   FXMAPFUNC(SEL_QUERY_TIP,0,FXClView::onQueryTip),
   FXMAPFUNC(SEL_QUERY_HELP,0,FXClView::onQueryHelp),
-  FXMAPFUNC(SEL_TIMEOUT,FXList::ID_TIPTIMER,FXClView::onTipTimer)
+  FXMAPFUNC(SEL_TIMEOUT, FXList::ID_TIPTIMER, FXClView::onTipTimer)
   };
 
 // Object implementation
@@ -94,6 +95,8 @@ ClSeq::ClSeq(FXClView* v, LytSeqInfo* lytseq, const char* seq) {
 
 // Serialization
 FXClView::FXClView():rows(false,true,false), columns(false,true,false) {
+  vscroll=false;
+  hscroll=false;
   flags|=FLAG_ENABLED;
   font=(FXFont*)-1;
   seqfont=(FXFont*)-1;
@@ -130,6 +133,8 @@ FXClView::FXClView(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint
   FXScrollArea(p,opts,x,y,w,h), rows(false,true,false), columns(false,true,false){
 
   seqlist=new GList<ClSeq>(false,true,false);
+  vscroll=false;
+  hscroll=false;
   //seqaligns=new GList<ClAlign>(false,true,false);
   flags|=FLAG_ENABLED;
   font=new FXFont(getApp(), "helvetica", 8, FXFont::Normal);
@@ -249,7 +254,7 @@ long FXClView::onMotion(FXObject*,FXSelector,void* ptr){
 
 void FXClView::drawColumn(int colno) {
  if (colno<0) return;
- update(iround(seqW*colno)+CL_BORDER+getXPosition(), 0, iround(seqW)+1, viewport_h);
+ update(iround(seqW*colno)+CL_BORDER+getContentX(), 0, iround(seqW)+1, getVisibleHeight());
  }
 
 // Pressed a button
@@ -311,8 +316,8 @@ void FXClView::makeVisible(ClSeq* seq) {
  CRect rect;
  seq->calcViewRect(rect); //the position of the seq rectangle in the view space
  //we'll try to determine how to scroll to get this sequence shown in the middle of the screen
- int yscroll =  getYPosition();
- int xscroll =  getXPosition();
+ int yscroll =  getContentY();
+ int xscroll =  getContentX();
  int cx=width/2 - xscroll; //view's x position of the center of the screen
  int cy=height/2 - yscroll; //view's y position of the center
  scrollBy(rect.ix()-cx,rect.iy()-cy);
@@ -476,7 +481,6 @@ FXClView::~FXClView(){
   //delete seqaligns;
 }
 
-
 // Create window
 void FXClView::create(){
   FXScrollArea::create();
@@ -511,23 +515,17 @@ void FXClView::scrollBy(int dx,int dy){
    update();
   }
 
-
-
-void FXClView::resize(FXint w,FXint h) {
-  if(w!=width || h!=height){
-    backbuf->resize(w,h);
-    }
-  FXScrollArea::resize(w,h);
-  }
-
 void FXClView::position(FXint x, FXint y, FXint w,FXint h) {
+  //fprintf(stderr, "****** ::position() called!\n");
+  bool resized=false;
   if(w!=width || h!=height){
-    if (backbuf!=NULL)
+    if (backbuf!=NULL) {
         backbuf->resize(w,h);
-    }
+        resized=true;
+    	}
+  }
   FXScrollArea::position(x,y,w,h);
 }
-
 
 inline FXbool IntersectRect(const CRect& r1, const CRect& r2) {
  return
@@ -636,8 +634,8 @@ static int nt2color(char c) {
 ClSeq* FXClView::getSeqAt(int x, int y, int& col) {
 //locate the sequence that's on screen at coords x,y
 //locate the row:
-x-=getXPosition();
-y-=getYPosition();
+x-=getContentX();
+y-=getContentY();
 col=-1;
 int r0=(y-gridH-CL_BORDER)/(seqH+vSpace); //layout row
 int colno=(int)floor(((double)(x-CL_BORDER))/seqW);
@@ -677,7 +675,7 @@ void FXClView::drawSeq(ClSeq* seq) {
  //redraw a particular sequence
  CRect rect;
  seq->calcViewRect(rect);
- offsetRect(rect, getXPosition(), getYPosition());
+ offsetRect(rect, getContentX(), getContentY());
  update(rect.ix()-1,rect.iy()-1,rect.iw()+1,rect.ih()+1);
  /* directly on the surface dc ?
     seq->Paint(dc, rect);
@@ -688,8 +686,8 @@ void FXClView::paintSeq(FXDCWindow* dc, FXRectangle& ClpRct,
 						ClSeq* seq, ColorStyle colorstyle) {
    //ClpRct is the rectangle that needs to be repainted
    //
-   int xp = -getXPosition();
-   int yp = -getYPosition();
+   int xp = -getContentX();
+   int yp = -getContentY();
    int margin=CL_BORDER<<1;
    int endx=ClpRct.x + ClpRct.w+1; //end X coordinate for the "dirty" rectangle
    //--first (leftmost) column of the layout which needs painting:
@@ -987,8 +985,8 @@ void FXClView::paintGap(FXDCWindow* dc, FXColor gapcolor, FXRectangle& ClpRct, i
 
 void FXClView::paintSeqBorder(FXDCWindow* dc, FXRectangle& ClpRct, ClSeq* seq,
                               ColorStyle colorstyle) {
-    int xp = -getXPosition();
-    int yp = -getYPosition();
+    int xp = -getContentX();
+    int yp = -getContentY();
     //int endx=ClpRct.x + ClpRct.w+1; //end X coordinate
     CRect seqrect;
     seq->calcViewRect(seqrect);
@@ -1106,13 +1104,22 @@ void FXClView::paintSeqBorder(FXDCWindow* dc, FXRectangle& ClpRct, ClSeq* seq,
      dc->setClipRectangle(ClpRct);
 }
 
+void FXClView::getVisibleRegion(FXint& cstart, FXint& cend) {
+	//this must be called AFTER seqW was updated
+	cstart = XLeft+(FXint)floor(((double)(-getContentX()-CL_BORDER))/seqW);
+	if (cstart<XLeft) cstart=XLeft;
+	cend = XLeft+(FXint)iround(((double)(getVisibleWidth()-getContentX()-CL_BORDER))/seqW)-1;
+	if (cend>XRight) cend=XRight;
+	//fprintf(stderr, "cstart=%d, cend=%d\n", cstart, cend);
+	fflush(stderr);
+}
 
 void FXClView::paintGrid(FXDCWindow* dc, FXRectangle& gridR) {
     dc->setForeground(gridColor);
     dc->fillRectangle(gridR.x,gridR.y,
                     gridR.w,gridR.h);
     int endx=gridR.x + gridR.w+1;
-    int xp = -getXPosition();
+    int xp = -getContentX();
     //gridStep (in columns) must be computed after each zooming
     int xcol=(int)floor(((double)(gridR.x+xp-CL_BORDER))/seqW);
     int startcol=xcol-gridStep;
@@ -1194,6 +1201,12 @@ void FXClView::paintGrid(FXDCWindow* dc, FXRectangle& gridR) {
                  gridR.x+gridR.w, gridH);
 }
 
+// Widget has been resized
+long FXClView::onConfigure(FXObject*,FXSelector,void*){
+  resize(getWidth(), getHeight());
+  return 1;
+  }
+
 // Draw item list
 long FXClView::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent* event=(FXEvent*)ptr;
@@ -1202,7 +1215,7 @@ long FXClView::onPaint(FXObject*,FXSelector,void* ptr){
   //cool!
   FXDCWindow dc(this,event);
   FXRectangle clip(event->rect);
-  FXRectangle gridR(0,0,viewport_w+1, gridH+1);
+  FXRectangle gridR(0,0,getVisibleWidth()+1, gridH+1);
   gridR=FXRIntersection(clip,gridR);
   //rectangle to be converted to global, "content" coordinates
   //back buffer stuff
@@ -1233,7 +1246,7 @@ long FXClView::onPaint(FXObject*,FXSelector,void* ptr){
 
     CRect rect(clip);
     //rect is offset to be positioned in the whole content space:
-    offsetRect(rect,-getXPosition(),-getYPosition());
+    offsetRect(rect,-getContentX(),-getContentY());
      //start-end columns to check
     int c1=(int)floor(((double)(rect.x-CL_BORDER))/seqW)-1;
     int c2=(int)floor(((double)(rect.x+rect.w-CL_BORDER))/seqW)+1;
@@ -1254,16 +1267,16 @@ long FXClView::onPaint(FXObject*,FXSelector,void* ptr){
          }
     if (selCol>=0) { //draw column selection
       bufdc->setClipRectangle(event->rect);
-      int cx= iround(selCol*seqW)+CL_BORDER+getXPosition();
+      int cx= iround(selCol*seqW)+CL_BORDER+getContentX();
       bufdc->setLineWidth(1);
       bufdc->setFillStyle(FILL_OPAQUESTIPPLED);
-      bufdc->setStipple(STIPPLE_GRAY,cx,getYPosition());
+      bufdc->setStipple(STIPPLE_GRAY,cx,getContentY());
       //bufdc->setFunction((FXFunction)BLT_SRC_XOR_DST);
       bufdc->setForeground(getTextColor());
       bufdc->setBackground(seqColors[6]);
-      bufdc->drawLine(cx,0, cx, viewport_h );
-      bufdc->drawLine(cx+(int)seqW, 0, cx+(int)seqW, viewport_h);
-      //bufdc->drawRectangle(cx,0,seqW,viewport_h);
+      bufdc->drawLine(cx,0, cx, getVisibleHeight() );
+      bufdc->drawLine(cx+(int)seqW, 0, cx+(int)seqW, getVisibleHeight());
+      //bufdc->drawRectangle(cx,0,seqW,getVisibleHeight());
       bufdc->setFillStyle(FILL_SOLID);
       bufdc->setStipple(STIPPLE_NONE);
       }
@@ -1384,7 +1397,6 @@ ClSeq* FXClView::addSeq(const char* name, FXint len, FXint offs,
        XRight=seq->cl_xpos+seq->len; //extreme right position
      }
  return seq;
- //RecalcContent();
 }
 
 ClSeq* FXClView::addSeq(LytSeqInfo* seqinfo, const char* sequence) {
@@ -1404,10 +1416,7 @@ ClSeq* FXClView::addSeq(LytSeqInfo* seqinfo, const char* sequence) {
        XRight=seq->cl_xpos+seq->len; //extreme right position
      }
  return seq;
- //RecalcContent();
 }
-
-
 
 void FXClView::RecalcContent(bool re_paint) {
  seqH = iround((scale.sy * (double)seqfntH));
@@ -1425,15 +1434,11 @@ void FXClView::RecalcContent(bool re_paint) {
  //getFontWidth() doesn't really work for ps fonts,
  //so I use 40 as the max width of a grid number in pixels
  for (gridStep=10; seqW*gridStep < 40; gridStep+=10) ;
+ //gridStep = (seqW<4.0) ? 10 : 10*floor((double)4.0/seqW);
  //recompute the sequence height and vspace, based on scale.sy:
- int minH=(seqH+vSpace)*rows.Count()+gridH+CL_BORDER*2;
- int minW=iround(seqW*(double)(XRight-XLeft))+2*CL_BORDER;
- if (content_h!=minH+4) content_h=minH+4;
- if (content_w!=minW+4) content_w=minW+4;
- vertical->setLine(seqH+vSpace);
- horizontal->setLine((int)seqW);
  if (re_paint) {
-   layout();
+	 placeScrollBars(width,height);
+   //layout();
    update();
    }
 }
@@ -1529,7 +1534,6 @@ void FXClView::buildLayout() {
 	   max=FXMAX(column->ntdata[0].count, column->nN);
 	   if (contig!=NULL && contig->sequence!=NULL && c>=contig->cl_xpos) {
 		  column->letter=toupper(contig->sequence[c-contig->cl_xpos]);
-		  //fprintf(stderr, "%c",column->letter);
 		  }
 	   }
 	 if (column->letter) {
@@ -1662,7 +1666,7 @@ void FXClView::buildLayout() {
 void FXClView::ZoomY(FXdouble zy, int fromY) {
  //save the row num of the center of the screen
  if (zy<=0) zy=0.01;
- int yscroll =  getYPosition();
+ int yscroll =  getContentY();
  int cy;
  if (fromY<0) {
 	if (selSeq!=NULL) {
@@ -1676,19 +1680,17 @@ void FXClView::ZoomY(FXdouble zy, int fromY) {
 
  double r0=((double)(cy - gridH-CL_BORDER))/(seqH+vSpace);
  scale.sy = zy;
- RecalcContent(false);
+ RecalcContent(true); //also recalc scrollbar ranges
  //new coordinates:
- double r1=(double)((cy - gridH-CL_BORDER))/(seqH+vSpace);
- calcLayout();
+ //calcLayout();
  //try to offset the view with the number of rows
- vertical->setPosition(-(yscroll+iround((r1-r0)*(seqH+vSpace))));
- pos_y=-vertical->getPosition();
+ reposVScroll(yscroll, r0, cy);
  update();
  }
 
  void FXClView::ZoomX(FXdouble zx, int fromX) {
   if (zx<=0) zx=0.001;
-  int xscroll =  getXPosition();
+  int xscroll =  getContentX();
   int cx;
   if (fromX<0) { //zoom using a default center
     if (selCol>=0) {
@@ -1700,15 +1702,14 @@ void FXClView::ZoomY(FXdouble zy, int fromY) {
      }
    else
      cx=fromX-xscroll; //given center;
-  double c0=((double)(cx - CL_BORDER))/seqW;
   scale.sx = zx;
-  RecalcContent(false);
+  double c0=((double)(cx - CL_BORDER))/seqW;
+  RecalcContent(true);
   //new coordinates:
-  double c1=(double)((cx - CL_BORDER))/seqW;
   //try to offset the view back to it's original position
-  calcLayout();
-  horizontal->setPosition(-(xscroll+iround(((c1-c0)*seqW))));
-  pos_x=-horizontal->getPosition();
+  //calcLayout();
+  reposHScroll(xscroll, c0, cx);
+  if(target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),  NULL);
   update();
  }
 
@@ -1718,9 +1719,11 @@ void FXClView::moveContents(FXint x,FXint y){
   FXint dy=y-pos_y;
   pos_x=x;
   pos_y=y;
-  scroll(0,gridH+1,viewport_w,viewport_h-gridH,dx,dy);
+  FXint v_w=getVisibleWidth();
+  scroll(0,gridH+1,v_w,getVisibleHeight()-gridH,dx,dy);
   if (dx!=0) { //scroll grid area too
-    scroll(0,0,viewport_w,gridH,dx,0);
+    scroll(0,0,v_w,gridH,dx,0);
+    if(target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),  NULL); //(void*)(FXival)pos);
     }
   }
 
@@ -1728,8 +1731,8 @@ void FXClView::Zoom(FXdouble zx, FXdouble zy, int fromX, int fromY) {
  if (zy<=0) zy=0.01;
  if (zx<=0) zx=0.001;
  //if (zx<0.01 || zx>4 || zy<0.01 || zy>4) return;
- int yscroll =  getYPosition();
- int xscroll =  getXPosition();
+ int yscroll =  getContentY();
+ int xscroll =  getContentX();
  int cx;
  if (fromX<0) { //zoom using a default center
     if (selCol>=0) {
@@ -1751,111 +1754,175 @@ void FXClView::Zoom(FXdouble zx, FXdouble zy, int fromX, int fromY) {
     }
    else
     cy=fromY-yscroll;
- double r0=((double)(cy - gridH-CL_BORDER))/(seqH+vSpace);
  scale.sy = zy;
- double c0=((double)(cx - CL_BORDER))/seqW;
+ bool zxChanged = (scale.sx != zx);
  scale.sx = zx;
- RecalcContent(false);
+ double r0=((double)(cy - gridH-CL_BORDER))/(seqH+vSpace);
+ double c0=((double)(cx - CL_BORDER))/seqW;
+ RecalcContent(true); //recomputes seqW, seqH
  //new coordinates:
- double r1=(double)((cy - gridH - CL_BORDER))/(seqH+vSpace);
- double c1=(double)((cx - CL_BORDER))/seqW;
- //try to offset the view with the number of rows
- calcLayout();
- vertical->setPosition(-(yscroll+iround((r1-r0)*(seqH+vSpace))));
- pos_y=-vertical->getPosition();
- horizontal->setPosition(-(xscroll+iround(((c1-c0)*seqW))));
- pos_x=-horizontal->getPosition();
+ reposVScroll(yscroll, r0, cy);
+ reposHScroll(xscroll, c0, cx);
+ if (zxChanged && target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),  NULL);
  update();
 }
 
-//same as FXScrollArea::layout() but without repainting...
-void FXClView::calcLayout() {
-  register FXint new_x,new_y;
+
+void FXClView::placeScrollBars(FXint vw, FXint vh){
+  //register FXint cw,ch;
   register FXint sh_h=0;
   register FXint sv_w=0;
+
   // Inviolate
   FXASSERT(pos_x<=0 && pos_y<=0);
-  // Initial viewport size
-  viewport_w=getViewportWidth();
-  viewport_h=getViewportHeight();
-  // ALWAYS determine content size
-  content_w=getContentWidth();
-  content_h=getContentHeight();
 
+  // Get content size
+  //cw=getContentWidth();
+  //ch=getContentHeight();
   // Get dimensions of the scroll bars
   if(!(options&HSCROLLER_NEVER)) sh_h=horizontal->getDefaultHeight();
   if(!(options&VSCROLLER_NEVER)) sv_w=vertical->getDefaultWidth();
 
-  // Should we disable the scroll bars?
-  // A bit tricky as the scrollbars may influence each other's presence
-  if(!(options&(HSCROLLER_ALWAYS|VSCROLLER_ALWAYS)) && (content_w<=viewport_w) && (content_h<=viewport_h)){sh_h=sv_w=0;}
-  if(!(options&HSCROLLER_ALWAYS) && (content_w<=viewport_w-sv_w)) sh_h=0;
-  if(!(options&VSCROLLER_ALWAYS) && (content_h<=viewport_h-sh_h)) sv_w=0;
-  if(!(options&HSCROLLER_ALWAYS) && (content_w<=viewport_w-sv_w)) sh_h=0;
+  int minH=(seqH+vSpace)*rows.Count()+gridH+CL_BORDER*2;
+  int minW=iround(seqW*(double)(XRight-XLeft))+2*CL_BORDER;
+  //fprintf(stderr, "XRight=%d, minW=%d\n", XRight, minW);
+  bool adjust_h=false, adjust_w=false;
+  if (content_h!=minH+4) {
+ 	 content_h=minH+4;
+  }
+  if (content_w!=minW+4) {
+ 	 content_w=minW+4;
+  }
+
+  // Should we disable the scroll bars?  A bit tricky as the scrollbars
+  // may influence each other's presence.  Also, we don't allow more than
+  // 50% of the viewport to be taken up by scrollbars; when the scrollbars
+  // take up more than 50% of the available space we simply turn them off.
+  if(!(options&(HSCROLLER_ALWAYS|VSCROLLER_ALWAYS)) && (content_w<=vw) && (content_h<=vh)){sh_h=sv_w=0;}
+  if(!(options&HSCROLLER_ALWAYS) && ((content_w<=vw-sv_w) || (0>=vh-sh_h-sh_h))) sh_h=0;
+  if(!(options&VSCROLLER_ALWAYS) && ((content_h<=vh-sh_h) || (0>=vw-sv_w-sv_w))) sv_w=0;
+  if(!(options&HSCROLLER_ALWAYS) && ((content_w<=vw-sv_w) || (0>=vh-sh_h-sh_h))) sh_h=0;
 
   // Viewport size with scroll bars taken into account
-  viewport_w-=sv_w;
-
-  viewport_h-=sh_h;
+  vw-=sv_w;
+  vh-=sh_h;
 
   // Adjust content size, now that we know about those scroll bars
-  if((options&HSCROLLER_NEVER)&&(options&HSCROLLER_ALWAYS)) content_w=viewport_w;
-  if((options&VSCROLLER_NEVER)&&(options&VSCROLLER_ALWAYS)) content_h=viewport_h;
+  if((options&HSCROLLER_NEVER)&&(options&HSCROLLER_ALWAYS)) content_w=vw;
+  if((options&VSCROLLER_NEVER)&&(options&VSCROLLER_ALWAYS)) content_h=vh;
 
   // Furthermore, content size won't be smaller than the viewport
-  if(content_w<viewport_w) content_w=viewport_w;
-  if(content_h<viewport_h) content_h=viewport_h;
-
+  if(content_w<vw) content_w=vw;
+  if(content_h<vh) content_h=vh;
+  vscroll=(content_h>vh);
+  hscroll=(content_w>vw);
+  FXint new_x=pos_x;
+  FXint new_y=pos_y;
   // Content size
-  horizontal->setRange(content_w);
-  vertical->setRange(content_h);
+  if (hscroll) {
+	horizontal->show();
+    horizontal->setRange(content_w);
+    horizontal->setPage(vw);
+    horizontal->setPosition(-pos_x);
+    new_x=-horizontal->getPosition();
+    }
+  else horizontal->hide();
+  if (vscroll) {
+	vertical->show();
+    vertical->setRange(content_h);
+    // Page size may have changed
+    vertical->setPage(vh);
+    // Position may have changed
+    vertical->setPosition(-pos_y);
 
-  // Page size may have changed
-  horizontal->setPage(viewport_w);
-  vertical->setPage(viewport_h);
-
-  // Position may have changed
-  horizontal->setPosition(-pos_x);
-  vertical->setPosition(-pos_y);
-
-  // Get back the adjusted position
-  new_x=-horizontal->getPosition();
-  new_y=-vertical->getPosition();
-  /*
+    // Get back the adjusted position
+    new_y=-vertical->getPosition();
+  }
+  else vertical->hide();
   // Scroll to force position back into range
   if(new_x!=pos_x || new_y!=pos_y){
     moveContents(new_x,new_y);
     }
-  */
-  // Read back validated position
-  pos_x=-horizontal->getPosition();
-  pos_y=-vertical->getPosition();
 
-  // Hide or show horizontal scroll bar
-  if(sh_h){
+  // Read back validated position
+  if (hscroll)
+	  pos_x=-horizontal->getPosition();
+  if (vscroll)
+	  pos_y=-vertical->getPosition();
+
+  // Place horizontal scroll bar
+  if (hscroll) {
     horizontal->position(0,height-sh_h,width-sv_w,sh_h);
-    horizontal->show();
     horizontal->raise();
-    }
-  else{
-    horizontal->hide();
-    }
-  // Hide or show vertical scroll bar
-  if(sv_w){
+  }
+
+  // Place vertical scroll bar
+  if (vscroll) {
     vertical->position(width-sv_w,0,sv_w,height-sh_h);
-    vertical->show();
     vertical->raise();
-    }
-  else{
-    vertical->hide();
-    }
-  // Hide or show scroll corner
-  if(sv_w && sh_h){
+  }
+  // Place scroll corner
+  if (vscroll && hscroll) {
+	corner->show();
     corner->position(width-sv_w,height-sh_h,sv_w,sh_h);
-    corner->show();
     corner->raise();
-    }
-  else{
-    corner->hide();
-    }
+  }
+  else corner->hide();
 }
+
+
+// Recalculate layout
+
+void FXClView::layout(){
+  // Place scroll bars
+  placeScrollBars(width,height);
+  //fprintf(stderr, "layout triggered()!!!!\n");
+  //fflush(stderr);
+  if(target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),  NULL);
+  // Clean
+  flags&=~FLAG_DIRTY;
+}
+
+// Return visible scroll-area width
+FXint FXClView::getVisibleWidth() const {
+  FXint w=width;
+  if (vscroll)
+	  w-=vertical->getWidth();
+  return w;
+}
+
+
+// Return visible scroll-area height
+FXint FXClView::getVisibleHeight() const {
+  FXint h=height;
+  if (hscroll) h-=horizontal->getHeight();
+  return h;
+}
+
+void FXClView::reposVScroll(int yscroll, double r0, int cy) {
+  if (vscroll) {
+    double r1=(double)((cy - gridH - CL_BORDER))/(seqH+vSpace);
+	//vertical->show();
+    vertical->setPosition(-(yscroll+iround((r1-r0)*(seqH+vSpace))));
+	vertical->raise();
+    pos_y=-vertical->getPosition();
+  }
+  else {
+	pos_y=0;
+  }
+}
+
+void FXClView::reposHScroll(int xscroll, double c0, int cx) {
+  if (hscroll) {
+    double c1=(double)((cx - CL_BORDER))/seqW;
+	//horizontal->show();
+    horizontal->setPosition(-(xscroll+iround(((c1-c0)*seqW))));
+    horizontal->raise();
+    pos_x=-horizontal->getPosition();
+  }
+  else {
+	//horizontal->hide();
+	pos_x=0;
+  }
+}
+

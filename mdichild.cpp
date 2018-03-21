@@ -21,6 +21,7 @@ FXIcon* MDIChild::icnDensCS=NULL;
 // Map
 FXDEFMAP(MDIChild) MDIChildMap[]={
   //________Message_Type____________________ID___________________Message_Handler________
+  FXMAPFUNC(SEL_CHANGED, MDIChild::ID_CLVIEW, MDIChild::onViewUpdate),
   FXMAPFUNCS(SEL_CHANGED,           MDIChild::ID_CLXZOOM, 
                                     MDIChild::ID_CLYZOOM,   MDIChild::onCmdClZoom),
   FXMAPFUNC(SEL_COMMAND,            MDIChild::ID_CLNOZOOM,  MDIChild::onNoZoom),
@@ -35,9 +36,10 @@ FXDEFMAP(MDIChild) MDIChildMap[]={
   FXMAPFUNCS(SEL_COMMAND,           MDIChild::ID_CSTYLE1,
                                     MDIChild::ID_CSTYLE3,   MDIChild::onColorOption),
   FXMAPFUNC(SEL_COMMAND,            MDIChild::ID_CONTIG,    MDIChild::onSelContig),
+  FXMAPFUNC(SEL_COMMAND,            MDIChild::ID_REGION,    MDIChild::onSelRegion),
   FXMAPFUNC(SEL_COMMAND,            MDIChild::ID_HIDEGAPS,  MDIChild::onHideGaps),
   FXMAPFUNC(SEL_COMMAND,            MDIChild::ID_SELSEQ,    MDIChild::onSelSeq),
-  FXMAPFUNC(SEL_CONFIGURE,          0, MDIChild::onMaxRestore),
+  // FXMAPFUNC(SEL_CONFIGURE,          0, MDIChild::onMaxRestore), //breaks on fox 1.7
   };
 
 
@@ -65,12 +67,14 @@ MDIChild::MDIChild(FXMDIClient* p,const FXString& name,FXIcon* ic,
                  0,0,0,0,0,0,0,0);
       FXHorizontalFrame* hf=new FXHorizontalFrame(vframe,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_TOP);
          //contig and option buttons:
-         new FXLabel(hf, "Cluster:", NULL, LAYOUT_CENTER_Y);
+      //new FXLabel(hf, "Cluster:", NULL, LAYOUT_CENTER_Y);
 
-      selcontig=new FXComboBox(hf,32,this,ID_CONTIG,
-                       COMBOBOX_NORMAL|FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y);
-      selcontig->setNumVisible(10);
-      selcontig->setEditable(FALSE);
+      //selcontig=new FXComboBox(hf,32,this,ID_CONTIG,
+      //                 COMBOBOX_NORMAL|FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y);
+      selcontig=new FXListBox(hf,this,ID_CONTIG,
+                             FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y);
+      selcontig->setNumVisible(12); //TODO: should be min(count, 12)
+      //selcontig->setEditable(FALSE);
       pop=new FXPopup(this);
       if (numInst<=0) {
           icnDefCS=new FXXPMIcon(getApp(), cs_default, FXRGB(192,192,192),IMAGE_ALPHACOLOR);
@@ -94,6 +98,9 @@ MDIChild::MDIChild(FXMDIClient* p,const FXString& name,FXIcon* ic,
               NULL,this, ID_CLGRPS,
               LAYOUT_TOP|FRAME_RAISED|FRAME_THICK|JUSTIFY_HZ_APART);
       cbgaps=new FXCheckButton(hf,"hide contig gaps",this, MDIChild::ID_HIDEGAPS);
+      new FXLabel(hf, "    Region:", NULL, LAYOUT_CENTER_Y);
+      selregion=new FXTextField(hf, 32, this, ID_REGION, FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y);
+
       hframe=new FXHorizontalFrame(vframe,FRAME_NONE|LAYOUT_FILL_X|LAYOUT_FILL_Y|ICON_BEFORE_TEXT,
                  0,0,0,0,0,0,0,0);
       vframe= new FXVerticalFrame(hframe,FRAME_NONE|LAYOUT_FILL_Y|LAYOUT_FILL_X,
@@ -111,7 +118,7 @@ MDIChild::MDIChild(FXMDIClient* p,const FXString& name,FXIcon* ic,
              selseq=new FXComboBox(hhf,28,this,ID_SELSEQ,
                        COMBOBOX_NORMAL|FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y);
              selseq->setNumVisible(12);
-             selseq->setEditable(FALSE);
+             selseq->setEditable(false);
              seqData = new FXLabel(hhf, "                      ", NULL,
                    FRAME_SUNKEN|JUSTIFY_LEFT|LAYOUT_FILL_X);
                    //seqComment=new FXTextField(vf,120,NULL,0,JUSTIFY_LEFT|FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X);
@@ -171,7 +178,6 @@ void MDIChild::showSeqInfo(ClSeq* seq) {
             seq->clipL+1, seq->len-seq->clipR,
             seq->clipL, seq->clipR, 
             seq->ins, seq->dels);
-
        else 
         s.format(" %s   range: %d to %d | clipL:%d clipR:%d ",
             seq->reversed?"-":"+",
@@ -200,7 +206,7 @@ void MDIChild::showSeqInfo(ClSeq* seq) {
     ColumnData* c=alignview->getColumnData(cidx);
     if (c->letter!=0) {
        cinfo.format("Column %d  ['%c']: %d layers, %d mismatches ",
-          cidx+alignview->getXLeft(), c->letter, c->thickness, c->mismatches);
+          cidx+alignview->XLeft, c->letter, c->thickness, c->mismatches);
        if (c->mismatches>1 && c->thickness>3) {
          cinfo+=" [ ";
          for (int i=0;i<3;i++) {
@@ -213,7 +219,7 @@ void MDIChild::showSeqInfo(ClSeq* seq) {
          }
         }
       else
-        cinfo.format("Column %d (%d layers)", cidx+alignview->getXLeft(), c->thickness);
+        cinfo.format("Column %d (%d layers)", cidx+alignview->XLeft, c->thickness);
     columnInfo->setText(cinfo);
     }
   else {
@@ -241,7 +247,7 @@ long MDIChild::onCmdClZoom(FXObject*,FXSelector sel,void*){
       zyLabel->setText(s);
       break;
     }
- return 1;    
+ return 1;
 }
 
 long MDIChild::onColorOption(FXObject*,FXSelector sel,void*){
@@ -295,7 +301,19 @@ long MDIChild::onMMouseDown(FXObject*,FXSelector,void* ptr) {
   //zoomPt.y=ev->win_y;
   return 1;
   }
-  
+
+long MDIChild::onViewUpdate(FXObject*,FXSelector,void*){
+ //on hscroll or zooming, update the range display
+	//TODO: this should be triggered by FXClView somehow, when its content
+	//is scrolled horizontally or zoomed in/out
+	FXString region;
+	FXint xstart=0, xend=0;
+	alignview->getVisibleRegion(xstart, xend);
+	region.format("%d - %d", xstart, xend);
+  selregion->setText(region);
+  return 1;
+}
+
 long MDIChild::onMouseMove(FXObject*, FXSelector, void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   if (zooming) {
@@ -331,7 +349,7 @@ long MDIChild::onMouseMove(FXObject*, FXSelector, void* ptr){
     }
   if (panning) {
     alignview->scrollBy((ev->win_x-ev->last_x)*2, (ev->win_y-ev->last_y)*2);
-    }    
+    }
   return 1;
   }
 
@@ -441,11 +459,13 @@ bool MDIChild::loadLayoutFile(FXString& lytfile) {
    LytCtgData* ctg=layoutparser->getContig(i);
    name.format("%s (%d seqs, %d nts)", ctg->name, ctg->numseqs,
           ctg->len);
-   selcontig->appendItem(name);   
+   selcontig->appendItem(name);
    }
  //show first contig:
+
  selcontig->setCurrentItem(0);
  selContig(0, cbgaps->getCheck());
+
  if (alignview->HasSeqs()) {
       clropt3->enable();
       cbgaps->show();
@@ -656,6 +676,12 @@ long MDIChild::onSelContig(FXObject*,FXSelector,void* ptr) {
   return 1;
   }
 
+long MDIChild::onSelRegion(FXObject*,FXSelector,void* ptr) {
+  //selContig(selcontig->getCurrentItem(), cbgaps->getCheck());
+  return 1;
+  }
+
+
 long MDIChild::onHideGaps(FXObject*,FXSelector,void* ptr) {
   selContig(selcontig->getCurrentItem(), cbgaps->getCheck());
   return 1;
@@ -670,7 +696,7 @@ long MDIChild::onSelSeq(FXObject*,FXSelector,void* ptr) {
   showSeqInfo(seq);
   return 1;
   }
-
+/* fox 1.7 - seems to no longer work with this:
 long MDIChild::onMaxRestore(FXObject* sender,FXSelector sel,void* ptr) {  
  FXbool maximized=isMaximized();
  if (wasMaximized!=maximized) {
@@ -680,6 +706,7 @@ long MDIChild::onMaxRestore(FXObject* sender,FXSelector sel,void* ptr) {
      }
  return FXMDIChild::handle(sender,sel,ptr); 
 }
+*/
 
 MDIChild::~MDIChild() {
  delete pop;

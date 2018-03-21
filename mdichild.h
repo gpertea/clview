@@ -22,7 +22,8 @@ protected:
   int prevColumn;
   FXPopup* pop;
   FXVerticalFrame* contents;
-  FXComboBox* selcontig;
+  FXListBox* selcontig;
+  FXTextField* selregion;
   FXComboBox* selseq;
   FXHorizontalFrame* clframe;
   FXVerticalFrame* toolframe;
@@ -59,6 +60,7 @@ public:
   FXOption* clropt3;
 
   long onCmdClZoom(FXObject*,FXSelector,void*);
+  long onViewUpdate(FXObject*,FXSelector,void*);
   long onSeqSelect(FXObject*,FXSelector,void*); //clicking
   long onRMouseDown(FXObject*,FXSelector,void*);
   long onRMouseUp(FXObject*,FXSelector,void*);
@@ -69,10 +71,11 @@ public:
   long onMaxZoom(FXObject*,FXSelector,void*);
   long onColorOption(FXObject*,FXSelector,void*);
   long onSelContig(FXObject*, FXSelector, void*);
+  long onSelRegion(FXObject*, FXSelector, void*);
   long onHideGaps(FXObject*, FXSelector, void*);
   long onSelSeq(FXObject*, FXSelector, void*); //from list
   long onCmdGrps(FXObject*, FXSelector, void*);
-  long onMaxRestore(FXObject*, FXSelector, void*);
+  //long onMaxRestore(FXObject*, FXSelector, void*);
 public:
   // Messages
   enum{
@@ -88,7 +91,8 @@ public:
     ID_HIDEGAPS,
     ID_SELSEQ,
     ID_MAXRESTORE,
-    ID_CONTIG
+    ID_CONTIG,
+    ID_REGION
     };
 public:
   MDIChild(FXMDIClient* p,const FXString& name,FXIcon* ic,FXMenuPane* mn,

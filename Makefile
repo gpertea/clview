@@ -2,10 +2,12 @@
 # the path to Geo's C++ utility library source code
 GCD := ../gclib
 
-#FOX install prefix directory (./configure --prefix)
+#this must be the path to FOX install prefix directory 
 FOXPREFIX = /ccb/sw
-FOXINCDIR := ${FOXPREFIX}/include/fox-1.6
+
+FOXINCDIR := ${FOXPREFIX}/include/fox-1.7
 FOXLIBDIR := ${FOXPREFIX}/lib
+
 # Directories to search for header files
 INCDIRS := -I. -I${GCD} -I${FOXINCDIR} \
  -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
@@ -31,10 +33,10 @@ endif
 # C/C++ linker
 LINKER    := g++
 ifeq ($(findstring static,$(MAKECMDGOALS)),)
-LIBS := -lm -lFOX-1.6
+LIBS := -lm -lFOX-1.7 -lm -lXext -lX11 -lXi -lXrender -lXfixes -lfontconfig -lXrandr -lXcursor -lpthread -lpng -lXft -ljpeg -lrt
 else
-LIBS :=  -Wl,-Bstatic -lFOX-1.6 -Wl,-Bdynamic \
- -lm -lXext -lX11 -lXcursor -lpthread -lpng12 -ltiff -lXft -ljpeg -lrt
+LIBS :=  -Wl,-Bstatic -lFOX-1.7 -Wl,-Bdynamic \
+ -lm -lXext -lX11 -lXi -lXrender -lXfixes -lfontconfig -lXrandr -lXcursor -lpthread -lpng -lXft -ljpeg -lrt
 endif
 %.o : %.c
 	${CXX} ${CXXFLAGS} -c $< -o $@
@@ -65,3 +67,6 @@ clview: ${OBJS}
 .PHONY : clean
 clean::
 	@${RM} clview core* *.exe ${OBJS}
+
+
+
