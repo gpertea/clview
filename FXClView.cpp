@@ -137,17 +137,21 @@ FXClView::FXClView(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint
   hscroll=false;
   //seqaligns=new GList<ClAlign>(false,true,false);
   flags|=FLAG_ENABLED;
-  font=new FXFont(getApp(), "helvetica", 8, FXFont::Normal);
-  seqfont=new FXFont(getApp(),"courier", 10, FXFont::Normal);
+  font=new FXFont(getApp(), "helvetica", 8);
+  seqfont=new FXFont(getApp(),"mono", 10);
   backbuf=NULL;
   gridH=12;
   grpColors[0]=NULL;
   grpColors[1]=NULL;
   showContig=false;
-  seqfntH=12; //seqfont->getFontHeight();
-  seqfntW=8; //seqfont->getFontWidth();
+  //seqfntH=12;
+  /*
+  seqfntH=seqfont->getFontHeight();
+  //seqfntW=8;
+  seqfntW=seqfont->getFontWidth();
   seqH=seqfntH;
   seqW=seqfntW;
+  */
   XRight=0;
   XLeft=0;
   selSeq=NULL;
@@ -488,13 +492,15 @@ void FXClView::create(){
   seqfont->create();
   seqfntH=seqfont->getFontHeight()+2;
   seqfntW=seqfont->getFontWidth();
+  seqH=seqfntH;
+  seqW=seqfntW;
   if (backbuf==NULL) {
       backbuf=new FXImage(getApp(),
            NULL, IMAGE_SHMI|IMAGE_SHMP, width,height);
       }
   backbuf->create(); //needed?
   RecalcContent();
-  }
+}
 
 
 // Detach window
@@ -516,7 +522,6 @@ void FXClView::scrollBy(int dx,int dy){
   }
 
 void FXClView::position(FXint x, FXint y, FXint w,FXint h) {
-  //fprintf(stderr, "****** ::position() called!\n");
   bool resized=false;
   if(w!=width || h!=height){
     if (backbuf!=NULL) {
@@ -685,7 +690,7 @@ void FXClView::drawSeq(ClSeq* seq) {
 void FXClView::paintSeq(FXDCWindow* dc, FXRectangle& ClpRct,
 						ClSeq* seq, ColorStyle colorstyle) {
    //ClpRct is the rectangle that needs to be repainted
-   //
+   //GMessage(">>> paintSeq for %s in (%d,%d,%d,%d)\n", seq->name.text(), ClpRct.x, ClpRct.y, ClpRct.w, ClpRct.h);
    int xp = -getContentX();
    int yp = -getContentY();
    int margin=CL_BORDER<<1;
@@ -1174,6 +1179,8 @@ void FXClView::paintGrid(FXDCWindow* dc, FXRectangle& gridR) {
             if (w<iround(newx-x+1)) w++;
             dc->fillRectangle(iround(x),gridH-seqH,w,seqH-2);
             //now paint the text too in that area:
+            //FXchar* ctgchar=contig->sequence+txtcol-(contig->cl_xpos-XLeft);
+            //int ctgpos=txtcol-(contig->cl_xpos-XLeft);
             if (cidx!=NOCTG_CLRIDX && canShowSeq && contig->sequence!=NULL) {
                   dc->setForeground(FXRGB(0x00, 0x00, 0x00));
                   dc->drawText((int)floor(x), gridH-2,
