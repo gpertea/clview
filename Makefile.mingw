@@ -1,9 +1,7 @@
-# Useful directories
-# the path to Geo's C++ utility library source code
+#make sure PATH has first a directory which includes the mingw g++ binary
+#e.g. d:\cygwin64\usr\x86_64-w64-mingw32\bin
+# (or under cygwin: /usr/x86_64-w64-mingw32/bin)
 GCD := ../gclib
-
-#this must be the paths to FOX install prefix directory 
-# ( with the ./include/fox-1.6 and ./lib subdirectories )
 
 CC     :=
 LINKER :=
@@ -21,8 +19,8 @@ ifdef MINGW_HOME
 else
 # CC      := g++
 # LINKER  := g++
- CC      := /usr/bin/i686-w64-mingw32-g++
- LINKER  := /usr/bin/i686-w64-mingw32-g++
+ CC      := /usr/bin/x86_64-w64-mingw32-g++
+ LINKER  := /usr/bin/x86_64-w64-mingw32-g++
 endif
 
 FOXPREFIX = /opt/mingw
@@ -33,19 +31,25 @@ FOXINCDIR := ${FOXPREFIX}/include/fox-1.7
 FOXLIBDIR := ${FOXPREFIX}/lib
 FOXLIB := ${FOXLIBDIR}/libFOX-1.7.a
 
-LDFLAGS  := -flto -static-libgcc -static-libstdc++ 
-LIBS     := -lwsock32 -limm32
-#FOX is linking all these: -lcomctl32 -lwsock32 -lwinspool -lmpr -lgdi32 -limm32 -lpthread -lopengl32 -lglu32
+LDFLAGS  := -flto -static-libgcc -static-libstdc++
+
+LIBS     := -L/usr/x86_64-w64-mingw32/sys-root/mingw/lib -ljpeg -lpng -lz -lwsock32 -limm32 -Wl,--as-needed
 RESWRAP  := ${FOXPREFIX}/bin/reswrap.exe 
 
 # Directories to search for header files
 INCDIRS := -I. -I${GCD} -I${FOXINCDIR}
 
-
-CXXFLAGS  = -Wall -Wextra -Wformat -Woverloaded-virtual -Wshadow -O2 -Wuninitialized \
- -ffast-math -fstrict-aliasing -finline-functions -fomit-frame-pointer -fexpensive-optimizations 
+BASEFLAGS  = -Wall -Wextra -Wformat -Woverloaded-virtual -Wshadow -Wuninitialized \
+ -ffast-math -fstrict-aliasing 
 #DEFINES   = -DFOX_BIGENDIAN=0 -D_WINDOWS -DDEBUG -D_DEBUG -DWIN32 -D_WIN32 -DMINGW -DMINGW32 
 DEFINES = -DNO_XIM
+
+ifeq ($(findstring release,$(MAKECMDGOALS)),release)
+  CXXFLAGS := -O2 -DNDEBUG $(BASEFLAGS) -finline-functions -fomit-frame-pointer -fexpensive-optimizations
+else
+  CXXFLAGS := -g -DDEBUG -D_DEBUG $(BASEFLAGS)
+  LDFLAGS := -g $(LDFLAGS) -Wl,-subsystem,console
+endif
 
 # C++ compiler
 RM := rm -f
@@ -60,10 +64,11 @@ ICONS +=   bookdel_gif.gif
 ICONS +=   booknext_gif.gif 
 
 .PHONY : all
-clview: clview.exe
+
 all:   clview.exe
+clview: clview.exe
 debug: all
-static: all
+release: all
 
 clrutils.o : clrutils.h
 mdichild.o : clv_icons.h mdichild.h FXClView.h
@@ -81,10 +86,6 @@ mainwin.o  : mainwin.h
 clview.exe: ${OBJS} $(FOXLIB)
 	$(LINKER) -fwhole-program -s -mwindows $(LDFLAGS) $(DEFINES) -o $@ $(OBJS) $(FOXLIB) $(LIBS)
 	strip $@
-
-#clview : $(OBJS)
-#	${LINKER} ${LDFLAGS} -o $@ ${filter-out %.a %.so, $^} ${LIBS}
-
 
 # target for removing all object files
 

@@ -106,6 +106,7 @@ FXClView::FXClView():rows(false,true,false), columns(false,true,false) {
   seqfntW=8;
   seqH=seqfntH;
   seqW=seqfntW;
+  //printf("---------- FXClview() default cons: Font width: %d, height: %d\n", seqfntW, seqfntH);
   grpColors[0]=NULL;
   grpColors[1]=NULL;
   XRight=0;
@@ -138,20 +139,29 @@ FXClView::FXClView(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint
   //seqaligns=new GList<ClAlign>(false,true,false);
   flags|=FLAG_ENABLED;
   font=new FXFont(getApp(), "helvetica", 8);
-  seqfont=new FXFont(getApp(),"mono", 10);
+  //font->create();
+  seqfont=new FXFont(getApp(),"courier", 10,
+                                 FXFont::Normal,
+                                 FXFont::Straight,
+                                 FONTENCODING_DEFAULT,
+                                 FXFont::NonExpanded,
+                                 FXFont::Fixed);
+  //seqfont->create();
   backbuf=NULL;
   gridH=12;
   grpColors[0]=NULL;
   grpColors[1]=NULL;
   showContig=false;
-  //seqfntH=12;
   /*
   seqfntH=seqfont->getFontHeight();
-  //seqfntW=8;
   seqfntW=seqfont->getFontWidth();
+  printf("---------- FXClview() Font width: %d, height: %d\n", seqfntW, seqfntH);
+  seqfntH+=2;
+  //if (seqfntW==0) seqfntW=12;
+  //seqfntW=12;
   seqH=seqfntH;
   seqW=seqfntW;
-  */
+*/
   XRight=0;
   XLeft=0;
   selSeq=NULL;
@@ -170,6 +180,30 @@ FXClView::FXClView(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint
   maxThickness=0;
   //initSeqColors();
   }
+
+// Create window
+void FXClView::create(){
+  FXScrollArea::create();
+  font->create();
+  seqfont->create();
+  if (backbuf==NULL) {
+      backbuf=new FXImage(getApp(),
+           NULL, IMAGE_SHMI|IMAGE_SHMP, width,height);
+      }
+  /* FXString nt("G");
+  seqfntH=seqfont->getTextHeight(nt);
+  seqfntW=seqfont->getTextWidth(nt);
+  */
+  seqfntH=seqfont->getFontHeight();
+  seqfntW=seqfont->getFontWidth();
+  //printf("---------- FXClview::create() Font width: %d, height: %d\n", seqfntW, seqfntH);
+  seqfntH+=2;
+  //seqfntW=12;
+  seqH=seqfntH;
+  seqW=seqfntW;
+  backbuf->create(); //needed?
+  RecalcContent();
+}
 
 // Enter window
 long FXClView::onEnter(FXObject* sender,FXSelector sel,void* ptr){
@@ -484,24 +518,6 @@ FXClView::~FXClView(){
   delete seqlist;
   //delete seqaligns;
 }
-
-// Create window
-void FXClView::create(){
-  FXScrollArea::create();
-  font->create();
-  seqfont->create();
-  seqfntH=seqfont->getFontHeight()+2;
-  seqfntW=seqfont->getFontWidth();
-  seqH=seqfntH;
-  seqW=seqfntW;
-  if (backbuf==NULL) {
-      backbuf=new FXImage(getApp(),
-           NULL, IMAGE_SHMI|IMAGE_SHMP, width,height);
-      }
-  backbuf->create(); //needed?
-  RecalcContent();
-}
-
 
 // Detach window
 void FXClView::detach(){
