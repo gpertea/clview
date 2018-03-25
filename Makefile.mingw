@@ -31,10 +31,12 @@ FOXINCDIR := ${FOXPREFIX}/include/fox-1.7
 FOXLIBDIR := ${FOXPREFIX}/lib
 FOXLIB := ${FOXLIBDIR}/libFOX-1.7.a
 
-LDFLAGS  := -flto -static-libgcc -static-libstdc++
+LDFLAGS  :=  -DHAVE_JPEG_H=1 -DHAVE_PNG_H=1 -DHAVE_ZLIB_H=1 -DHAVE_BZ2LIB_H=1 -DNO_XIM -flto -static-libgcc -static-libstdc++
 
-LIBS     := -L/usr/x86_64-w64-mingw32/sys-root/mingw/lib -ljpeg -lpng -lz -lwsock32 -limm32 -Wl,--as-needed
-RESWRAP  := ${FOXPREFIX}/bin/reswrap.exe 
+##LIBS := -L/usr/x86_64-w64-mingw32/sys-root/mingw/lib -ljpeg -lpng -lz -lwsock32 -limm32 -Wl,--as-needed
+#LIBS := -L/usr/x86_64-w64-mingw32/sys-root/mingw/lib -ljpeg -lpng -lz -lwsock32 -limm32
+LIBS := -lmsimg32 -lcomctl32 -lwsock32 -lwinspool -lmpr -lgdi32 -limm32 -lpthread -ljpeg -lpng -lz -lbz2 -Wl,--as-needed
+RESWRAP := ${FOXPREFIX}/bin/reswrap.exe 
 
 # Directories to search for header files
 INCDIRS := -I. -I${GCD} -I${FOXINCDIR}
@@ -48,7 +50,8 @@ ifeq ($(findstring release,$(MAKECMDGOALS)),release)
   CXXFLAGS := -O2 -DNDEBUG $(BASEFLAGS) -finline-functions -fomit-frame-pointer -fexpensive-optimizations
 else
   CXXFLAGS := -g -DDEBUG -D_DEBUG $(BASEFLAGS)
-  LDFLAGS := -g $(LDFLAGS) -Wl,-subsystem,console
+  LDFLAGS := -g $(LDFLAGS)
+  #LDFLAGS := -g $(LDFLAGS) -Wl,-subsystem,console
 endif
 
 # C++ compiler
@@ -56,7 +59,7 @@ RM := rm -f
 %.o : %.cpp
 	${CC} $(INCDIRS) -c $< -o $@ $(CXXFLAGS) $(DEFINES)
 
-OBJS = ./appmain.o ./mdichild.o ./clrutils.o ${GCD}/GBase.o ${GCD}/LayoutParser.o ${GCD}/AceParser.o ./mainwin.o ./FXClView.o
+OBJS = ./appmain.o ./mdichild.o ${GCD}/GBase.o ${GCD}/LayoutParser.o ${GCD}/AceParser.o ./mainwin.o ./FXClView.o
 
 ICONS  =   adie_gif.gif
 ICONS +=   big_gif.gif
@@ -70,7 +73,7 @@ clview: clview.exe
 debug: all
 release: all
 
-clrutils.o : clrutils.h
+#clrutils.o : clrutils.h
 mdichild.o : clv_icons.h mdichild.h FXClView.h
 FXClView.o : FXClView.h
 mainwin.o  : mainwin.h

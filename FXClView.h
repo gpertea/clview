@@ -11,6 +11,11 @@
 #define MISMATCH_CLRIDX 16
 #define NOCTG_CLRIDX 16
 
+FXColor hls2rgb(int &H, int &L, int &S);
+void rgb2hls(FXColor color, int &H, int &L, int &S);
+FXColor modhls (FXColor src, int h, int l, int s);
+FXColor getRColor(FXColor base, int range, int i);
+
 struct FXTimer;
 
 struct CScale {
