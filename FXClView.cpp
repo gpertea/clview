@@ -273,7 +273,7 @@ void FXClView::create(){
   backbuf->create(); //needed?
   seqfntH=seqfont->getFontHeight();
   seqfntW=seqfont->getFontWidth();
-  printf("---------- FXClview::create() Font width: %d, height: %d\n", seqfntW, seqfntH);
+  //printf("---------- FXClview::create() Font width: %d, height: %d\n", seqfntW, seqfntH);
 #ifdef WIN32
   seqfntH+=2;
 #endif
