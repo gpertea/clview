@@ -53,7 +53,7 @@ endif
 %.o : %.cxx
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
-OBJS = ./appmain.o ./mdichild.o ${GCD}/GBase.o ${GCD}/LayoutParser.o ${GCD}/AceParser.o ./mainwin.o ./FXClView.o
+OBJS = ./appmain.o ./mdichild.o ${GCD}/GBase.o LayoutParser.o AceParser.o ./mainwin.o ./FXClView.o
 
 .PHONY : all
 all:   clview
