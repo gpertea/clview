@@ -30,7 +30,7 @@ void LayoutParser::close() {
         }
    }
 
-off_t LayoutParser::fskipTo(const char* linestart, const char* butnot) {
+int64_t LayoutParser::fskipTo(const char* linestart, const char* butnot) {
   /* reads the file from the current position
   until the next occurence of a line
   starting with linestart
@@ -39,7 +39,7 @@ off_t LayoutParser::fskipTo(const char* linestart, const char* butnot) {
   the file offset is -1 if linestart was not found
   or -2 if an unwanted line-start came out of order
   */
-    off_t lastpos=getFilePos();
+	int64_t lastpos=getFilePos();
     int tlen=strlen(linestart);
     int nlen=(butnot==NULL) ? 0 : strlen(butnot);
     while (linebuf->getLine(f, f_pos)!=NULL) {

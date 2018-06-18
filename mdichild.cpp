@@ -22,7 +22,7 @@ FXIcon* MDIChild::icnDensCS=NULL;
 FXDEFMAP(MDIChild) MDIChildMap[]={
   //________Message_Type____________________ID___________________Message_Handler________
   FXMAPFUNC(SEL_CHANGED, MDIChild::ID_CLVIEW, MDIChild::onViewUpdate),
-  FXMAPFUNCS(SEL_CHANGED,           MDIChild::ID_CLXZOOM, 
+  FXMAPFUNCS(SEL_CHANGED,           MDIChild::ID_CLXZOOM,
                                     MDIChild::ID_CLYZOOM,   MDIChild::onCmdClZoom),
   FXMAPFUNC(SEL_COMMAND,            MDIChild::ID_CLNOZOOM,  MDIChild::onNoZoom),
   FXMAPFUNC(SEL_COMMAND,            MDIChild::ID_CLGRPS,    MDIChild::onCmdGrps),
@@ -51,21 +51,19 @@ FXIMPLEMENT(MDIChild,FXMDIChild,MDIChildMap,ARRAYNUMBER(MDIChildMap))
 // Make some windows
 MDIChild::MDIChild(FXMDIClient* p,const FXString& name,FXIcon* ic,
     FXMenuPane* mn,FXuint opts,FXint x,FXint y,FXint w,FXint h)
-     :FXMDIChild(p,name, ic, mn, opts, x, y, w, h) {
+     :FXMDIChild(p,name, ic, mn, opts, x, y, w, h), prevColumn(-1),pop(NULL),contents(NULL),selcontig(NULL),
+	  selregion(NULL),selseq(NULL), clframe(NULL), toolframe(NULL),vframe(NULL), hframe(NULL),
+	  zyLabel(NULL), zxLabel(NULL),  nozoomBtn(NULL), seqData(NULL), seqComment(NULL), seqAsmInfo(NULL),
+	  columnInfo(NULL), statusbar(NULL), sliderZX(NULL), sliderZY(NULL), cbgaps(NULL), layoutparser(NULL),
+	  groupHolder(NULL), isAce(false), isSAM(false), isPAF(false), zooming(false), panning(false),
+	  wasMaximized(false), startZX(0),startZY(0), alignview(NULL), clropt1(NULL), clropt2(NULL), clropt3(NULL) {
   FXString s;
   // Tooltip
-  wasMaximized=false;
   new FXToolTip(getApp());
-  layoutparser=NULL;
-  groupHolder=NULL;
-  zooming=false;
-  panning=false;
-  prevColumn=-1;
   contents=new FXVerticalFrame(this,FRAME_NONE|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0);
-
-    vframe=new FXVerticalFrame(contents,FRAME_NONE|LAYOUT_FILL_Y|LAYOUT_FILL_X,
+  vframe=new FXVerticalFrame(contents,FRAME_NONE|LAYOUT_FILL_Y|LAYOUT_FILL_X,
                  0,0,0,0,0,0,0,0);
-      FXHorizontalFrame* hf=new FXHorizontalFrame(vframe,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_TOP);
+  FXHorizontalFrame* hf=new FXHorizontalFrame(vframe,FRAME_RAISED|LAYOUT_FILL_X|LAYOUT_TOP);
          //contig and option buttons:
       //new FXLabel(hf, "Cluster:", NULL, LAYOUT_CENTER_Y);
 
@@ -162,7 +160,7 @@ MDIChild::MDIChild(FXMDIClient* p,const FXString& name,FXIcon* ic,
     zyLabel=new FXLabel(toolframe, s, NULL,
          FRAME_SUNKEN|LAYOUT_CENTER_X|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT,
          0,0,6*6,14);
-         
+
   alignview->setFocus();
   }
 
@@ -176,9 +174,9 @@ void MDIChild::showSeqInfo(ClSeq* seq) {
         s.format(" %s   range: %d to %d | clipL:%d clipR:%d | gaps: %d  dels: %d",
             seq->reversed?"-":"+",
             seq->clipL+1, seq->len-seq->clipR,
-            seq->clipL, seq->clipR, 
+            seq->clipL, seq->clipR,
             seq->ins, seq->dels);
-       else 
+       else
         s.format(" %s   range: %d to %d | clipL:%d clipR:%d ",
             seq->reversed?"-":"+",
             seq->clipL+1, seq->len-seq->clipR,
@@ -215,7 +213,7 @@ void MDIChild::showSeqInfo(ClSeq* seq) {
             cinfo+=s;
            }
           }
-         cinfo+=" ] "; 
+         cinfo+=" ] ";
          }
         }
       else
@@ -401,7 +399,7 @@ long MDIChild::onRMouseUp(FXObject*,FXSelector,void* ptr){
 long MDIChild::onMMouseUp(FXObject*,FXSelector,void* ptr){
   alignview->ungrab();
   panning=false;
-  if (!zooming) 
+  if (!zooming)
     alignview->setDragCursor(getApp()->getDefaultCursor(DEF_ARROW_CURSOR));
   return 1;
   }
@@ -491,7 +489,7 @@ void MDIChild::loadGroups(FXString& lytfile) {
      lp=new LayoutParser(lytfile.text());
      }
     else lp->close();
- if (!lp->open() || 
+ if (!lp->open() ||
           !lp->parse()) {
      FXMessageBox::error(this,MBOX_OK,"File error",
       "Error encountered opening/parsing layout file '%s'. Not a layout file?", lytfile.text());
@@ -503,7 +501,7 @@ void MDIChild::loadGroups(FXString& lytfile) {
  groupHolder=lp;
  assignGroups();
  }
- 
+
 void MDIChild::assignGroups() {
  if (groupHolder==NULL) return;
  int numGroups=0;
@@ -520,7 +518,7 @@ void MDIChild::assignGroups() {
      FXString s(ctg->seqs[j]->name);
      if (alignview->setSeqGrp(s, numGroups)) assigned=true;
      }
-   if (assigned) numGroups++; //advance to next group  
+   if (assigned) numGroups++; //advance to next group
    }
  if (numGroups>0) {
      //alignview->initGrpColors(numGroups);
@@ -591,7 +589,7 @@ void MDIChild::selContig(int ctgno, bool hideGaps) {
           layoutparser=NULL;
           GFREE(s);
           return;
-          }
+   }
    if (removeGaps && s!=NULL) {
 	 //shift all coordinates and lengths accordingly, remove gaps
 	 int clpL=seq->left-1;
@@ -602,13 +600,13 @@ void MDIChild::selContig(int ctgno, bool hideGaps) {
 	 int new_end=old_end-ctgrm[old_end-1];
 	 //fix interseg coordinates too, when introns are given
 	 // otherwise the "remove gaps" is going to mess up the MSA !!
-         
+
 	 for (int g = 0; g < seq->numisegs; g++) {
 	   int prevcoord=seq->intersegs[g].segEnd;
 	   seq->intersegs[g].segEnd-=ctgrm[prevcoord-1];
 	   prevcoord=seq->intersegs[g].nextStart;
 	   seq->intersegs[g].nextStart-=ctgrm[prevcoord-1];
-	   } 
+	   }
 	 //now create the cleaned copy of the sequence
          char* clnseq=NULL;
          int newlen=new_end-new_start+1+clpL+clpR;
@@ -642,10 +640,10 @@ void MDIChild::selContig(int ctgno, bool hideGaps) {
              clpL,clpR,s, numins, numdels);
          //alignview->addSeq(seq,s);
      } //gaps removal
-   else { // raw sequence display (with all gaps in place)  
+   else { // raw sequence display (with all gaps in place)
      /*alignview->addSeq(seq->name, seq->length(), seq->offs, seq->reversed,
          seq->left-1,seq->length()-seq->right,s);*/
-       alignview->addSeq(seq,s);  
+       alignview->addSeq(seq,s);
      }
    GFREE(s);
    }
@@ -697,14 +695,14 @@ long MDIChild::onSelSeq(FXObject*,FXSelector,void* ptr) {
   return 1;
   }
 /* fox 1.7 - seems to no longer work with this:
-long MDIChild::onMaxRestore(FXObject* sender,FXSelector sel,void* ptr) {  
+long MDIChild::onMaxRestore(FXObject* sender,FXSelector sel,void* ptr) {
  FXbool maximized=isMaximized();
  if (wasMaximized!=maximized) {
      FXWindow* mainwin=getShell();
      mainwin->handle(mainwin, FXSEL(SEL_COMMAND, ID_MAXRESTORE),ptr);
      wasMaximized=maximized;
      }
- return FXMDIChild::handle(sender,sel,ptr); 
+ return FXMDIChild::handle(sender,sel,ptr);
 }
 */
 

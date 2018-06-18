@@ -36,22 +36,31 @@ protected:
   FXTextField*        seqComment;
   FXLabel*            seqAsmInfo;
   FXLabel*          columnInfo;
-  FXStatusBar       *statusbar;             // Status bar
+  FXStatusBar*      statusbar;             // Status bar
   FXSlider* sliderZX;
   FXSlider* sliderZY;
   FXCheckButton* cbgaps;
   FXString file;
   LayoutParser* layoutparser;
   LayoutParser* groupHolder;
-  bool isAce; //file is an .ACE file (cap3)
-  bool zooming;
-  bool panning;
-  bool wasMaximized;
+  struct {
+     unsigned char isAce:1; //file is an .ACE file (cap3)
+     unsigned char isSAM:1;
+     unsigned char isPAF:1;
+     unsigned char zooming:1;
+     unsigned char panning:1;
+     unsigned char wasMaximized:1;
+  };
   double startZX, startZY;
   FXPoint zoomPt;
 protected:
   void assignGroups();
-  MDIChild(){}
+  MDIChild():prevColumn(-1),pop(NULL),contents(NULL),selcontig(NULL),selregion(NULL),selseq(NULL),
+		  clframe(NULL), toolframe(NULL),vframe(NULL), hframe(NULL), zyLabel(NULL), zxLabel(NULL),
+		  nozoomBtn(NULL), seqData(NULL), seqComment(NULL), seqAsmInfo(NULL), columnInfo(NULL),
+		  statusbar(NULL), sliderZX(NULL), sliderZY(NULL), cbgaps(NULL), layoutparser(NULL), groupHolder(NULL),
+		  isAce(false), isSAM(false), isPAF(false), zooming(false), panning(false), wasMaximized(false),
+		 startZX(0),startZY(0), alignview(NULL), clropt1(NULL), clropt2(NULL), clropt3(NULL){}
 public:
   // Message handlers
   FXClView* alignview;

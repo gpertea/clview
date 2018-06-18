@@ -38,7 +38,7 @@ class LytSeqInfo { //info for a sequence within the file
    bool segmented;
    int numisegs; // number of intersegs[]
    LytSeqInterSeg* intersegs;
-   off_t fpos; //file position for the sequence data
+   int64_t fpos; //file position for the sequence data
    unsigned char reversed;
    int offs; //offset in contig (of the very left end)
    int left,right; //clear range (relative to sequence itself, max 1..xlen)
@@ -101,9 +101,9 @@ class LytCtgData {
     int rpos;
     int numseqs;
     int offs; //some other type of user data that might be of use
-    off_t fpos; //position in file for this contig's entry
+    int64_t fpos; //position in file for this contig's entry
     GList<LytSeqInfo> seqs;
-    LytCtgData(off_t pos=0):name(NULL), len(0),
+    LytCtgData(int64_t pos=0):name(NULL), len(0),
       lpos(0), rpos(0), numseqs(0), offs(0), fpos(pos),
       seqs(false,false,false) {
     }
@@ -127,7 +127,7 @@ typedef bool fnLytSeq(int ctgno, LytCtgData* d, LytSeqInfo* s, char* seq);
 class LayoutParser {
  protected:
   FILE* f; //file stream
-  off_t f_pos;
+  int64_t f_pos;
   char* fname;
   LytCtgData* currentContig; // currently loaded contig -- for browsing/loading
   int numContigs; //total number of contigs found in this file
@@ -139,11 +139,11 @@ class LayoutParser {
                        //number of sequences and filepos
  protected:
   GLineReader* linebuf; //the line buffer
-  off_t fskipTo(const char* linestart, const char* butnot=NULL);
+  int64_t fskipTo(const char* linestart, const char* butnot=NULL);
   bool startsWith(const char* s, const char* start, int tlen);
   virtual LytSeqInfo* addSeq(char* s, LytCtgData* ctg);
-  int seek(off_t offset) {
-      int r=fseeko(f, offset, SEEK_SET);
+  int seek(int64_t offset) {
+      int r=fseeko(f, (off_t)offset, SEEK_SET);
       if (r==0) f_pos=offset;
       return r;
       }
@@ -185,7 +185,7 @@ class LayoutParser {
   virtual char* getContigSeq(LytCtgData* ctgdata) { return NULL; }
   int getNumContigs() { return numContigs; }
   //int getNumSeqs() { return numSeqs; }
-  off_t getFilePos() { return f_pos; }
+  int64_t getFilePos() { return f_pos; }
   //sorting the list of contigs:
   void contigsByName();
   void contigsByLen();
