@@ -11,7 +11,7 @@ class AceParser : public LayoutParser {
  public:
   AceParser(const char* filename):LayoutParser(filename) {}
   virtual bool open();
-  virtual bool parse(fnLytSeq* seqfn=NULL); //load all the file offsets
+  //virtual bool parse(fnLytSeq* seqfn=NULL); //load all the file offsets
   virtual bool parseContigs(); //load contigs' file offsets
   virtual bool loadContig(int ctgidx, fnLytSeq* seqfn=NULL,
                      bool re_pos=true); //for loading by browsing

@@ -15,11 +15,19 @@ class SamParser : public LayoutParser {
   hts_idx_t *bamidx;
   samFile* bamf;
   bool hasIndex;
+  bool parsed;
  public:
   SamParser(const char* filename):LayoutParser(filename), header(NULL), bamidx(NULL),
-         bamf(NULL), hasIndex(false) {}
+         bamf(NULL), hasIndex(false), parsed(false) {}
   virtual bool open();
+  void close() {
+	  if (bamidx) { hts_idx_destroy(bamidx); bamidx=NULL; }
+	  if (header) { bam_hdr_destroy(header); header=NULL; }
+	  if (bamf) { sam_close(bamf); bamf=NULL; }
+  }
   virtual ~SamParser() {
+      // hts_itr_destroy(iter);
+      // bam_destroy1(aln);
 	  if (bamidx) hts_idx_destroy(bamidx);
 	  if (header) bam_hdr_destroy(header);
 	  if (bamf) sam_close(bamf);
@@ -27,11 +35,11 @@ class SamParser : public LayoutParser {
   int64_t sam_seek(int64_t ofs) {
 	if (bamf==NULL) GError("Error: cannot call sam_tell() with NULL samFile!\n");
 	if (bamf->is_bgzf)
-		return bgzf_seek(bamf->bgzf, ofs, SEEK_SET);
+		return bgzf_seek(bamf->fp.bgzf, ofs, SEEK_SET);
 	//if (bamf->is_cram) -- add CRAM support?
 	off_t fpos(ofs);
 	if (bamf->format.format==sam)
-		return (int64_t)hseek(bamf->hfile, fpos, SEEK_SET);
+		return (int64_t)hseek(bamf->fp.hfile, fpos, SEEK_SET);
 	GError("Error: unrecognized file format? sam_seek()\n");
 	return -1;
   }
@@ -39,14 +47,14 @@ class SamParser : public LayoutParser {
   int64_t sam_tell(int64_t ofs) {
 	  if (bamf==NULL) GError("Error: cannot call sam_tell() with NULL samFile!\n");
 	  if (bamf->is_bgzf)
-		  return bgzf_tell(bamf->bgzf);
+		  return bgzf_tell(bamf->fp.bgzf);
 	  //if (bamf->is_cram)
 	  if (bamf->format.format==sam)
-		  return (int64_t) htell(bamf->hfile);
+		  return (int64_t) htell(bamf->fp.hfile);
 	  GError("Error: unrecognized file format? sam_tell()\n");
 	  return -1;
   }
-  virtual bool parse(fnLytSeq* seqfn=NULL); //load all the file offsets
+  //virtual bool parse(fnLytSeq* seqfn=NULL); //load all the file offsets
   virtual bool parseContigs(); //load contigs' file offsets
   virtual bool loadContig(int ctgidx, fnLytSeq* seqfn=NULL,
                      bool re_pos=true); //for loading by browsing

@@ -178,8 +178,18 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
 //read only the contig info from the file (not their sequence)
 //also checks for duplicate seqnames (just in case)
 bool SamParser::parseContigs() {
-  if (f!=stdin)  sam_seek(0);
-  off_t ctgpos;
+  //if (f!=stdin)  sam_seek(0);
+  //reopen the file to reset the seek index
+  if (parsed) {
+	  parsed=false;
+	  this->close();
+	  if (!this->open())
+		  GError("Error reopening SAM/BAM file for parsing!\n");
+  }
+  //TODO: implement BAM sequential parsing of records for each chromosome/contig
+  // remembering the file offset with sam_tell() so we can use sam_seek() for loadContig()
+  // BAM/SAM MUST be sorted by chromosome/contig!
+  int64_t ctgpos;
   numContigs=0;
   while ((ctgpos=fskipTo("CO "))>=0) {
     numContigs++;
@@ -207,7 +217,7 @@ bool SamParser::parseContigs() {
   return true;
 }
 
-
+/*
 bool SamParser::parse(fnLytSeq* seqfn) {
   //read all seqs and their positions from the file
   //also checks for duplicate seqnames (just in case)
@@ -241,22 +251,8 @@ bool SamParser::parse(fnLytSeq* seqfn) {
   contigs.setSorted(true);
   return true;
   }
+*/
 
-
- void add_intron(char*& buf,int accrd, int& rgpos,
-        const char* numstr, LytSeqInfo* seqinfo, char lspl, char rspl) {
-	int n=atoi(numstr);
-	if (n<=0) return;
-	if (seqinfo!=NULL) {
-	  char sL = 0;
-      char sR = 0;
-      if (lspl>0) sL=(lspl=='['?'S':'s');
-      if (rspl>0) sR=(rspl==']'?'S':'s');
-	  seqinfo->addInterSeg(seqinfo->offs+rgpos-1,seqinfo->offs+rgpos+n,
-						   0,0,sL,sR,accrd);
-	  }
-	rgpos+=n;
-}
 
 char* SamParser::readSeq(LytSeqInfo* sqinfo) {
 //assumes the next line is where a sequence starts!
@@ -304,7 +300,7 @@ while (linelen>0) {
                  if (r[i]==0) break;
 		         }
 		   }//splice check
-		add_intron(buf, accrd, rgpos, rlenbuf, sqinfo, l_splice, r_splice);
+		//add_intron(buf, accrd, rgpos, rlenbuf, sqinfo, l_splice, r_splice);
 		rlenbufacc=0;
 		r_splice=0;l_splice=0;
 		//i++;//skip the gap character
