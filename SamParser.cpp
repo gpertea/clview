@@ -19,36 +19,62 @@ bool SamParser::open() { //also checks if it looks like a valid ACE file
   return true;
 }
 
-
-LytSeqInfo* SamParser::addSeq(char* s, LytCtgData* ctg) {
- LytSeqInfo* seq;
- if (!startsWith(s, "AF ", 3))
-       return NULL;
- s+=3;
- char* p=strchrs(s," \t");
- if (p==NULL) return NULL;
- p++;
- char c;
- int offs;
- if (sscanf(p,"%c %d", &c, &offs)!=2) return NULL;
- p--;
- *p='\0';
- if ((seq=seqinfo.Find(s))!=NULL) {
-   GMessage("Sequence '%s' already found for contig '%s (%d nt)'\n"
-      " so it cannot be added for contig '%s (%d)'\n",
-     s, seq->contig->name, seq->contig->len,
-     ctg->name, ctg->len);
-   return NULL;
-   }
- seq = new LytSeqInfo(s, ctg, offs, (c=='C') ? 1 : 0);
- seqinfo.shkAdd(seq->name, seq);
- ctg->seqs.Add(seq);
- return seq;
+//read only the contig info and file offset
+bool SamParser::parseContigs() {
+  //if (f!=stdin)  sam_seek(0);
+  //reopen the file to reset the seek index
+  if (parsed) {
+	  parsed=false;
+	  this->close();
+	  if (!this->open())
+		  GError("Error reopening SAM/BAM file for parsing!\n");
+  }
+  /*
+  if (header) {
+	  for (int i=0;i<header->n_targets;++i) {
+		  printf("Contig #%d has ID %s\n",i,(header->target_name[i]));
+	  }
+  }
+  */
+  int64_t lastofs=0;
+  int64_t ctgofs=0;//sam/bam file offset for the current contig alignments
+  int ctgid=-1; //current contig index
+  numContigs=0;
+  LytCtgData* ctgdata=NULL; //current contig
+  bam1_t* aln=bam_init1();
+  while (sam_read1(bamf, header, aln)>= 0) {
+	  bam1_core_t& core=aln->core;
+	  if (core.flag & BAM_FUNMAP) {
+		  lastofs=this->sam_tell();
+		  continue; //ignore unmapped reads
+	  }
+	  if (core.tid>=0 && core.tid!=ctgid) {
+		  //new contig starts here (1st read alignment to it)
+		  numContigs++;
+		  ctgofs=lastofs;
+		  ctgid=core.tid;
+		  ctgdata=new LytCtgData(ctgofs);
+		  ctgdata->setName(header->target_name[ctgid], true);
+		  ctgdata->len=header->target_len[ctgid];
+		  ctgdata->offs=1; // ?
+		  SamCtgData* xdata=new SamCtgData(ctgid);
+		  ctgdata->uptr=xdata;
+		  ctgXData.Add(xdata);
+		  contigs.Add(ctgdata);
+	  }
+	  //aln = read alignment loaded here.. but we're not parsing/loading it now
+	  GASSERT(ctgdata); //ctgdata should be assigned
+	  ctgdata->numseqs++;
+	  lastofs=this->sam_tell();
+  }
+  bam_destroy1(aln);
+  //if (ctgofs==-2) return false; //parsing failed: line too long ?!?
+  contigs.setSorted(true);
+  return true;
 }
 
-
 bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
-
+ //load the current contig sequence and the sequence of all component/aligned reads
     bool forgetCtg = false;
     if (ctgidx>=contigs.Count())
       GError("LayoutParser: invalid contig index '%d'\n", ctgidx);
@@ -56,15 +82,14 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
     if (re_pos && currentContig!=NULL) { //free previously loaded contig data
       currentContig->seqs.Clear();       // unless it was a parse() call
       seqinfo.Clear();
-      }
+    }
     currentContig=ctgdata;
     int ctg_numSeqs=ctgdata->numseqs;
 
-    if (re_pos) {
-       seek(ctgdata->fpos); //position right where the contig definition starts
-       char *r = linebuf->getLine(f,f_pos);
-       if (r==NULL) return false;
-       }
+    if (re_pos) { //pretty much always
+      int64_t p=sam_seek(ctgdata->fpos); //position right where the alignments on this contig start
+      if (f_pos<=0) return false;
+    }
 
     if (seqfn!=NULL) { //process the contig sequence!
        char* ctgseq=readSeq();
@@ -74,7 +99,7 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
     //now look for all the component sequences
     if (fskipTo("AF ")<0) {
        GMessage("SamParser: error finding sequence offsets (AF)"
-                " for contig '%s' (%d)\n", ctgdata->name, ctgdata->len);
+                " for contig '%s' (%d)\n", ctgdata->getName(), ctgdata->len);
        return false;
        }
     int numseqs=0;
@@ -90,7 +115,7 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
     if (numseqs!=ctg_numSeqs) {
       GMessage("Invalid number of AF entries found (%d) for contig '%s' "
          "(length %d, numseqs %d)\n", numseqs,
-                ctgdata->name, ctgdata->len, ctg_numSeqs);
+                ctgdata->getName(), ctgdata->len, ctg_numSeqs);
       return false;
       }
     //now read each sequence entry
@@ -98,7 +123,7 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
     numseqs=0; //count again, now the RD entries
     if (seqpos<0) {
          GMessage("SamParser: error locating first RD entry for contig '%s'\n",
-             ctgdata->name);
+             ctgdata->getName());
          return false;
          }
     //int numseqs=0;
@@ -163,11 +188,11 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
     if (numseqs!=ctgdata->numseqs) {
       GMessage("Error: Invalid number of RD entries found (%d) for contig '%s' "
          "(length %d, numseqs %d)\n", numseqs,
-                ctgdata->name, ctgdata->len, ctg_numSeqs);
+                ctgdata->getName(), ctgdata->len, ctg_numSeqs);
       return false;
       }
     if (forgetCtg) {
-      ctgIDs.Remove(ctgdata->name);
+      ctgIDs.Remove(ctgdata->getName());
       ctgdata->seqs.Clear();
       seqinfo.Clear();
       contigs.RemovePtr(ctgdata);
@@ -175,47 +200,32 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
  return true;
 }
 
-//read only the contig info from the file (not their sequence)
-//also checks for duplicate seqnames (just in case)
-bool SamParser::parseContigs() {
-  //if (f!=stdin)  sam_seek(0);
-  //reopen the file to reset the seek index
-  if (parsed) {
-	  parsed=false;
-	  this->close();
-	  if (!this->open())
-		  GError("Error reopening SAM/BAM file for parsing!\n");
-  }
-  //TODO: implement BAM sequential parsing of records for each chromosome/contig
-  // remembering the file offset with sam_tell() so we can use sam_seek() for loadContig()
-  // BAM/SAM MUST be sorted by chromosome/contig!
-  int64_t ctgpos;
-  numContigs=0;
-  while ((ctgpos=fskipTo("CO "))>=0) {
-    numContigs++;
-    LytCtgData* ctgdata=new LytCtgData(ctgpos);
-    char* p=ctgdata->readName(linebuf->chars()+3, ctgIDs);
-    if (p==NULL) {
-       GMessage("SamParser: error parsing contig name!\n");
-       return false;
-       }
-    int ctglen, ctg_numSeqs, numseqs;
-    //p must be after contig name within linebuf!
-    if (sscanf(p, "%d %d", &ctglen, &numseqs)!=2) {
-      GMessage("Error parsing contig len and seq count at:\n%s\n",
-         linebuf->chars());
-      }
-    ctg_numSeqs=numseqs;
-    ctgdata->len=ctglen;
-    ctgdata->numseqs=numseqs;
-    ctgdata->offs = 1;
-    contigs.Add(ctgdata);
-    //ctgpos=fskipTo("CO ");
-    }
-  if (ctgpos==-2) return false; //parsing failed: line too long ?!?
-  contigs.setSorted(true);
-  return true;
+LytSeqInfo* SamParser::addSeq(char* s, LytCtgData* ctg) {
+ LytSeqInfo* seq;
+ if (!startsWith(s, "AF ", 3))
+       return NULL;
+ s+=3;
+ char* p=strchrs(s," \t");
+ if (p==NULL) return NULL;
+ p++;
+ char c;
+ int offs;
+ if (sscanf(p,"%c %d", &c, &offs)!=2) return NULL;
+ p--;
+ *p='\0';
+ if ((seq=seqinfo.Find(s))!=NULL) {
+   GMessage("Sequence '%s' already found for contig '%s (%d nt)'\n"
+      " so it cannot be added for contig '%s (%d)'\n",
+     s, seq->contig->getName(), seq->contig->len,
+     ctg->getName(), ctg->len);
+   return NULL;
+   }
+ seq = new LytSeqInfo(s, ctg, offs, (c=='C') ? 1 : 0);
+ seqinfo.shkAdd(seq->name, seq);
+ ctg->seqs.Add(seq);
+ return seq;
 }
+
 
 /*
 bool SamParser::parse(fnLytSeq* seqfn) {
@@ -360,14 +370,14 @@ char* SamParser::getSeq(LytSeqInfo* seq) {
 
 char* SamParser::getContigSeq(LytCtgData* ctg) {
  if (f==stdin || seek(ctg->fpos)!=0) {
-   GMessage("SamParser: error seeking contig '%s'\n", ctg->name);
+   GMessage("SamParser: error seeking contig '%s'\n", ctg->getName());
    return NULL;
    }
  //skip the contig header:
  char* r=linebuf->getLine(f,f_pos);
  if (r==NULL || !startsWith(linebuf->chars(), "CO ", 3)) {
     GMessage("SamParser: error seeking contig '%s'\n"
-        " (no CO entry found at location %d)\n", ctg->name, ctg->fpos);
+        " (no CO entry found at location %d)\n", ctg->getName(), ctg->fpos);
     return NULL;
     }
  return readSeq();

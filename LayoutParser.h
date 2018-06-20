@@ -84,31 +84,46 @@ class LytSeqInfo { //info for a sequence within the file
    int length() { return xlen; } //xtended span, including introns
    int seglen() { return xlen-interseglen; } //segments only, no introns
    bool operator==(const LytSeqInfo& s)  {
-	  return (offs+left-1==s.offs+s.left-1);
+	  return (offs+left==s.offs+s.left);
 	 }
    bool operator<(const LytSeqInfo& s)  {
-      return (offs+left-1<s.offs+s.left-1);
+      return (offs+left<s.offs+s.left);
      }
   char* expandGaps(char* s);
   };
 
 
 class LytCtgData {
-   public:
+   friend class LayoutParser;
+   protected:
+	bool sh_name; //name is from external source, do not free
     char* name; //contig name, as stored in file
+   public:
     unsigned int len; //contig length (lsequence, from ACE file)
     int lpos;
     int rpos;
     int numseqs;
     int offs; //some other type of user data that might be of use
+    void *uptr; //pointer to additional data for this contig
     int64_t fpos; //position in file for this contig's entry
     GList<LytSeqInfo> seqs;
-    LytCtgData(int64_t pos=0):name(NULL), len(0),
-      lpos(0), rpos(0), numseqs(0), offs(0), fpos(pos),
+    LytCtgData(int64_t pos=0):sh_name(false), name(NULL), len(0),
+      lpos(0), rpos(0), numseqs(0), offs(0), uptr(NULL), fpos(pos),
       seqs(false,false,false) {
     }
+    void copyName(const char* p) {
+    	name=Gstrdup(p);
+    	sh_name=false;
+    }
+    void setName(char* p, bool sh=false) { //set name from external source
+    	sh_name=sh;
+    	name=p;
+    }
+
+    char* getName() {  return name;  }
+
     ~LytCtgData() {
-      GFREE(name);
+      if (!sh_name) GFREE(name);
       seqs.Clear();
     }
 
@@ -121,7 +136,8 @@ class LytCtgData {
       return (strcmp(name,s.name)<0);
      }
  };
-//callback -- called after a read or contig sequence is loaded
+
+//callback -- to be called after a read or contig sequence is loaded
 typedef bool fnLytSeq(int ctgno, LytCtgData* d, LytSeqInfo* s, char* seq);
 
 class LayoutParser {
@@ -129,7 +145,8 @@ class LayoutParser {
   FILE* f; //file stream
   int64_t f_pos;
   char* fname;
-  LytCtgData* currentContig; // currently loaded contig -- for browsing/loading
+  //only one contig fully loaded at a time -- with all it's assembled/mapped reads:
+  LytCtgData* currentContig;
   int numContigs; //total number of contigs found in this file
   //int numSeqs; //total number of (distinct) sequences found in this file
   GHash<LytSeqInfo> seqinfo; //sequence locations in the file
