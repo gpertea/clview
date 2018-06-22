@@ -5,7 +5,7 @@
 #include "htslib/bgzf.h"
 #include "htslib/hts.h"
 #include "htslib/sam.h"
-
+#include "GapAssem.h"
 
 struct SamCtgData { //additional data for SAM contigs
   int32_t hdridx;

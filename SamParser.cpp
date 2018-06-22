@@ -91,12 +91,22 @@ bool SamParser::loadContig(int ctgidx, fnLytSeq* seqfn, bool re_pos) {
       if (f_pos<=0) return false;
     }
 
-    if (seqfn!=NULL) { //process the contig sequence!
+    /*if (seqfn!=NULL) { //process the contig sequence!
        char* ctgseq=readSeq();
        forgetCtg=(*seqfn)(numContigs, ctgdata, NULL, ctgseq);
        GFREE(ctgseq); //obviously the caller should have made a copy
        }
+    */
     //now look for all the component sequences
+    bam1_t* aln=bam_init1();
+    while (sam_read1(bamf, header, aln)>= 0) {
+  	   bam1_core_t& core=aln->core;
+  	   if (core.flag & BAM_FUNMAP) {
+  		  continue; //ignore unmapped reads
+  	   }
+
+    } //sam_read1 loop
+
     if (fskipTo("AF ")<0) {
        GMessage("SamParser: error finding sequence offsets (AF)"
                 " for contig '%s' (%d)\n", ctgdata->getName(), ctgdata->len);
