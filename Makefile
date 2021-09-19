@@ -2,8 +2,9 @@
 # the path to Geo's C++ utility library source code
 GCD := ../gclib
 
-#this must be the path to FOX install prefix directory 
-FOXPREFIX = /ccb/sw
+## adjust as needed: path to FOX install prefix directory 
+FOXPREFIX = ${HOME}/sw
+
 
 FOXINCDIR := ${FOXPREFIX}/include/fox-1.7
 FOXLIBDIR := ${FOXPREFIX}/lib
@@ -29,15 +30,18 @@ else
   CXXFLAGS = -g -Wall -DDEBUG -D_DEBUG $(BASEOPTS)
   LDFLAGS = -g -L${FOXLIBDIR}
 endif
+FOXPKG := ${FOXPREFIX}/lib/pkgconfig/fox17.pc
+X_BASE_LIBS := $(shell pkg-config --variable=X_BASE_LIBS ${FOXPKG})
+LIBS := $(shell pkg-config --variable=LIBS ${FOXPKG})
 
 # C/C++ linker
 LINKER    := g++
-ifeq ($(findstring static,$(MAKECMDGOALS)),)
-LIBS := -lm -lFOX-1.7 -lm -lXext -lX11 -lXi -lXrender -lXfixes -lfontconfig -lXrandr -lXcursor -lpthread -lpng -lXft -ljpeg -lrt
+ifeq ($(findstring static,$(MAKECMDGOALS)),)  
+   LIBS := -lFOX-1.7 ${X_BASE_LIBS} ${LIBS}
 else
-LIBS :=  -Wl,-Bstatic -lFOX-1.7 -Wl,-Bdynamic \
- -lm -lXext -lX11 -lXi -lXrender -lXfixes -lfontconfig -lXrandr -lXcursor -lpthread -lpng -lXft -ljpeg -lrt
+LIBS :=  -Wl,-Bstatic -lFOX-1.7 -Wl,-Bdynamic ${X_BASE_LIBS} ${LIBS}
 endif
+
 %.o : %.c
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
