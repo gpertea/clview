@@ -231,7 +231,20 @@ FXClView::FXClView(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint
                                  FXFont::Fixed);
 #else
   //for some reason the above causes a bad result for getFontWidth
-  seqfont=new FXFont(getApp(),"monospace", 10);
+  /*
+  fprintf(stderr, "Creating seqfont here!\n");
+  seqfont=new FXFont(getApp(),"monospace", 10, FXFont::Normal,
+                                 FXFont::Straight,
+                                 FONTENCODING_DEFAULT,
+                                 FXFont::NonExpanded,
+                                 FXFont::Fixed);
+                                 */
+  seqfont=new FXFont(getApp(),"courier", 10,
+                                 FXFont::Normal,
+                                 FXFont::Straight,
+                                 FONTENCODING_DEFAULT,
+                                 FXFont::NonExpanded,
+                                 FXFont::Fixed);
 #endif
   //seqfont->create();
   backbuf=NULL;
@@ -273,7 +286,11 @@ void FXClView::create(){
   backbuf->create(); //needed?
   seqfntH=seqfont->getFontHeight();
   seqfntW=seqfont->getFontWidth();
-  printf("---------- FXClview::create() Font width: %d, height: %d\n", seqfntW, seqfntH);
+  /* FXString fn=seqfont->getName();
+  FXString fan=seqfont->getActualName();
+  printf("---------- FXClview::create() Font %s (actual name: %s) width: %d, height: %d\n", 
+     fn.text(), fan.text(), seqfntW, seqfntH);
+  */
 #ifdef WIN32
   seqfntH+=2;
 #endif
@@ -281,7 +298,7 @@ void FXClView::create(){
   //seqfntW=12;
   seqH=seqfntH;
   seqW=seqfntW;
-   RecalcContent();
+  RecalcContent();
 }
 
 // Enter window
